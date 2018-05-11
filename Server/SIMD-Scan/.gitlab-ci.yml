@@ -1,0 +1,48 @@
+stages:
+  - test_basic
+  - test_advanced
+  - benchmark
+
+variables:
+  GIT_STRATEGY: fetch
+
+run_basic_tests:
+  stage: test_basic
+  only:
+    refs:
+      - master
+  script:
+    - echo "Running basic tests"
+    - cp /tmp/eval_dir/CMakeLists.txt .
+    - mkdir build && cd build
+    - cmake ..
+    - make -j8
+    - ./simdscan_test
+
+run_advanced_tests:
+  stage: test_advanced
+  only:
+    refs:
+      - master
+  script:
+    - echo "Running advanced tests"
+    - cp /tmp/eval_dir/CMakeLists.txt .
+    - mkdir build && cd build
+    - cmake -DADV_TEST=1 ..
+    - make -j8
+    - ./simdscan_adv_test
+
+run_benchmark:
+  stage: benchmark
+  only:
+    refs:
+      - master
+  script:
+    - echo "Running benchmark"
+    - cp /tmp/eval_dir/CMakeLists.txt .
+    - mkdir build && cd build
+    - cmake -DBENCH=1 ..
+    - make -j8
+    - ./simdscan_bench
+
+
