@@ -1,2 +1,0 @@
-MatriculationNumber=YourNumberHere
-Name=YourName

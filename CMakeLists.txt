@@ -1,24 +1,7 @@
-set (CMAKE_CXX_STANDARD 11)
-
 cmake_minimum_required(VERSION 3.0)
-project(adms_labs)
+project(shared_simd_scan)
 
+file(GLOB_RECURSE SRC_FILES src/*.h src/*.cpp)
 
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -Wall -g -std=c++11")
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  # using Clang
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  # using GCC
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-  # using Intel C++
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-  # using Visual Studio C++
-endif()
-
-add_subdirectory(Client)
-add_subdirectory(Server)
-add_subdirectory(Table)
-add_subdirectory(utils)
+add_executable(shared_simd_scan ${SRC_FILES})
+target_include_directories(shared_simd_scan PRIVATE ${PROJECT_SOURCE_DIR}/src)

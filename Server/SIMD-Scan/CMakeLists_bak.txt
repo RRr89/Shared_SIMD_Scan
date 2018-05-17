@@ -1,5 +1,0 @@
-add_executable(simd-scan SIMD_tests.cc )
-#include_directories(${CMAKE_SOURCE_DIR}/projectB) # include files from ProjectB
-target_link_libraries(simd-scan)
-
-install(TARGETS simd-scan RUNTIME DESTINATION bin)
