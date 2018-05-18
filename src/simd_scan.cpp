@@ -20,7 +20,7 @@ __m256i* compress_9bit_input(std::vector<uint16_t>& input)
 	{
 		long long tmp_buffer = 0;
 		tmp_buffer = tmp_buffer | input[i];
-		tmp_buffer = tmp_buffer << (i * bits_needed);
+		tmp_buffer = tmp_buffer << (i * bits_needed); // undefined behaviour?
 		buffer[idx_] = buffer[idx_] | tmp_buffer;
 		remaining_buffer_size -= bits_needed;
 
@@ -32,7 +32,7 @@ __m256i* compress_9bit_input(std::vector<uint16_t>& input)
 		}
 		else if (remaining_buffer_size < bits_needed)
 		{
-			//logic to handle overflow_bits
+			// logic to handle overflow_bits
 			i++;
 			tmp_buffer = 0;
 			tmp_buffer = tmp_buffer | input[i];
@@ -53,14 +53,53 @@ __m256i* compress_9bit_input(std::vector<uint16_t>& input)
 	return (__m256i*) buffer;
 }
 
-void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_t>& output) {
+void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_t>& output) 
+{
 	output.reserve(input_size);
 
-	uint16_t current = 0;
+	uint64_t* in = reinterpret_cast<uint64_t*>(input);
+	auto bits_needed = BITS_NEEDED;
+	auto mem_size = bits_needed * input_size;
+	int array_size = ceil((double)mem_size / 64);
 
-	for (size_t i = 0; i < input_size; i++) 
+	uint64_t mask = (1 << bits_needed) - 1;
+
+	uint64_t current = 0;
+	size_t overflow_bits = 0;
+
+	for (size_t i = 0; i < array_size; i++) 
 	{
+		current = in[i] >> overflow_bits;
 
+		size_t unread_bits = 64 - overflow_bits;
+		while (unread_bits >= bits_needed) 
+		{
+			uint16_t decompressed_element = current & mask;
+			output.push_back(decompressed_element);
+
+			if (output.size() == input_size) 
+			{
+				return;
+			}
+
+			current = current >> bits_needed;
+			unread_bits -= bits_needed;
+		}
+
+		// handle overlapping element
+		if (unread_bits != 0)
+		{
+			uint64_t next = in[i + 1];
+			current = current | (next << unread_bits);
+
+			uint16_t decompressed_element = current & mask;
+			output.push_back(decompressed_element);
+
+			overflow_bits = bits_needed - unread_bits;
+		}
+		else {
+			overflow_bits = 0;
+		}
 	}
 }
 

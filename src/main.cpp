@@ -8,8 +8,9 @@
 
 int main(int argc, char* argv)
 {
-	std::vector<uint16_t> column(1024);
-	for (size_t i = 0; i < 1024; i++)
+	size_t compressed_int_max = (1 << BITS_NEEDED) - 3;
+	std::vector<uint16_t> column(compressed_int_max);
+	for (size_t i = 0; i < compressed_int_max; i++)
 	{
 		column[i] = (uint16_t) i;
 	}
@@ -19,7 +20,22 @@ int main(int argc, char* argv)
 
 	dump_memory(compressed, compressed_bytes);
 
-	std::this_thread::sleep_for(std::chrono::seconds(5));
+	std::vector<uint16_t> decompressed;
+	decompress_9bit_slow(compressed, column.size(), decompressed);
+
+	// TODO turn into unit tests
+	if (column.size() != decompressed.size()) 
+	{
+		std::cout << "mismatching vector size" << std::endl;
+	}
+
+	for (size_t i = 0; i < column.size(); i++) 
+	{
+		if (column[i] != decompressed[i])
+		{
+			std::cout << "mismatch at index " << i << std::endl;
+		}
+	}
 
     return 0;
 }

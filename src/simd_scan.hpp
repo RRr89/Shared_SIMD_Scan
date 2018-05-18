@@ -13,6 +13,11 @@
 __m256i* compress_9bit_input(std::vector<uint16_t> &input);
 
 /*
+* Non-vectorized decompression
+*/
+void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_t>& output);
+
+/*
 * SIMD DECOMPRESS - decompresses the compressed input use 16 Byte, 4 Byte and Bit Alignment as described in the paper
 *
 * Input:compressed input, inpute size in terms of number of elements in compressed input, and result buffer
