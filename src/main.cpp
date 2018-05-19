@@ -23,19 +23,5 @@ int main(int argc, char* argv)
 	std::vector<uint16_t> decompressed;
 	decompress_9bit_slow(compressed, column.size(), decompressed);
 
-	// TODO turn into unit tests
-	if (column.size() != decompressed.size()) 
-	{
-		std::cout << "mismatching vector size" << std::endl;
-	}
-
-	for (size_t i = 0; i < column.size(); i++) 
-	{
-		if (column[i] != decompressed[i])
-		{
-			std::cout << "mismatch at index " << i << std::endl;
-		}
-	}
-
     return 0;
 }
