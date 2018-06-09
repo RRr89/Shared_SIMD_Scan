@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <immintrin.h>
-#include <tmmintrin.h>
 #include <cmath>
 #include <vector>
 #include <bitset>
@@ -16,6 +15,11 @@ __m256i* compress_9bit_input(std::vector<uint16_t> &input);
 * Non-vectorized decompression
 */
 void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_t>& output);
+
+/*
+* SIMD decompression (SSE3; 128bit)
+*/
+void decompress_128(__m128i* input, size_t input_size, int* output);
 
 /*
 * SIMD DECOMPRESS - decompresses the compressed input use 16 Byte, 4 Byte and Bit Alignment as described in the paper

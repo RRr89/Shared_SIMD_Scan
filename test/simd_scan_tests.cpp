@@ -28,15 +28,18 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 		}
 	}
 
-	SECTION("SIMD decompression") 
+	SECTION("SIMD decompression (SSE)") 
 	{
-		int *result_buffer = new int[input_numbers.size()]();
-		decompress(compressed, input_numbers.size(), result_buffer);
+		// TODO remove reserve once compression has been updated...
+		int *result_buffer = new int[input_numbers.size() + 4]();
+		decompress_128((__m128i*)compressed, input_numbers.size(), result_buffer);
 
 		for (size_t i = 0; i < input_numbers.size(); i++)
 		{
 			REQUIRE(input_numbers[i] == result_buffer[i]);
 		}
+
+		delete result_buffer;
 	}
 }
 
