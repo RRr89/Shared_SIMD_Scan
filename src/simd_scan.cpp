@@ -57,7 +57,7 @@ __m256i* compress_9bit_input(std::vector<uint16_t>& input)
 
 void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_t>& output) 
 {
-	output.reserve(input_size);
+	output.resize(input_size);
 
 	uint64_t* in = reinterpret_cast<uint64_t*>(input);
 	auto bits_needed = BITS_NEEDED;
@@ -69,6 +69,8 @@ void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_
 	uint64_t current = 0;
 	size_t overflow_bits = 0;
 
+	size_t oi = 0;
+
 	for (size_t i = 0; i < array_size; i++) 
 	{
 		current = in[i] >> overflow_bits;
@@ -77,9 +79,9 @@ void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_
 		while (unread_bits >= bits_needed) 
 		{
 			uint16_t decompressed_element = current & mask;
-			output.push_back(decompressed_element);
+			output[oi++] = decompressed_element;
 
-			if (output.size() == input_size) 
+			if (oi == input_size) 
 			{
 				return;
 			}
@@ -95,7 +97,7 @@ void decompress_9bit_slow(__m256i* input, size_t input_size, std::vector<uint16_
 			current = current | (next << unread_bits);
 
 			uint16_t decompressed_element = current & mask;
-			output.push_back(decompressed_element);
+			output[oi++] = decompressed_element;
 
 			overflow_bits = bits_needed - unread_bits;
 		}
