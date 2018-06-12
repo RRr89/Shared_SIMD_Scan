@@ -33,7 +33,9 @@ __m256i* compress_9bit_input(std::vector<uint16_t>& input)
 		else if (remaining_buffer_size < bits_needed)
 		{
 			// logic to handle overflow_bits
-			i++;
+			i++; // TODO index out of range here
+			if (i == input.size()) break; // quick fix for that...
+
 			tmp_buffer = 0;
 			tmp_buffer = tmp_buffer | input[i];
 			tmp_buffer = tmp_buffer << (64 - remaining_buffer_size);
