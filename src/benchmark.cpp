@@ -38,7 +38,7 @@ void measure_decompression()
 	_clock();
 	
 	std::vector<uint16_t> decompressed;
-	decompress_9bit_slow(compressed, input_size, decompressed);
+	decompress_standard(compressed, input_size, decompressed);
 	
 	std::cout << "slow: " << _clock().count() << " ns" << std::endl;
 
@@ -51,5 +51,24 @@ void measure_decompression()
 	
 	std::cout << "sse 128: " << _clock().count() << " ns" << std::endl;
 
+	// ------------	
+	
+	_clock();
+
+	int* decompressed3 = new int[input_size]();
+	decompress_128_9bit_1group((__m128i*)compressed, input_size, decompressed3);
+
+	std::cout << "sse 128 (9bit optimized): " << _clock().count() << " ns" << std::endl;
+
 	// ------------
+
+	// checking results...
+	for (size_t i = 0; i < input_size; i++) 
+	{
+		if (!(input[i] == decompressed[i] && input[i] == decompressed2[i] && input[i] == decompressed3[i]))
+		{
+			std::cout << "mismatch at index " << i << std::endl;
+		}
+	}
+	std::cout << "finished checking results" << std::endl;
 }

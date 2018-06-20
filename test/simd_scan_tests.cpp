@@ -18,7 +18,7 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 	SECTION("Non-vectorized decompression") 
 	{
 		std::vector<uint16_t> decompressed;
-		decompress_9bit_slow(compressed, input_numbers.size(), decompressed);
+		decompress_standard(compressed, input_numbers.size(), decompressed);
 
 		REQUIRE(decompressed.size() == input_numbers.size());
 
