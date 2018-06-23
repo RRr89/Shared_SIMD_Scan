@@ -52,11 +52,20 @@ void measure_decompression()
 	std::cout << "sse 128: " << _clock().count() << " ns" << std::endl;
 
 	// ------------	
-	
+
 	_clock();
 
 	int* decompressed3 = new int[input_size]();
-	decompress_128_9bit_1group((__m128i*)compressed, input_size, decompressed3);
+	decompress_128_1group((__m128i*)compressed, input_size, decompressed3);
+
+	std::cout << "sse 128 (load after 4): " << _clock().count() << " ns" << std::endl;
+
+	// ------------	
+	
+	_clock();
+
+	int* decompressed4 = new int[input_size]();
+	decompress_128_9bit_1group((__m128i*)compressed, input_size, decompressed4);
 
 	std::cout << "sse 128 (9bit optimized): " << _clock().count() << " ns" << std::endl;
 
@@ -65,7 +74,8 @@ void measure_decompression()
 	// checking results...
 	for (size_t i = 0; i < input_size; i++) 
 	{
-		if (!(input[i] == decompressed[i] && input[i] == decompressed2[i] && input[i] == decompressed3[i]))
+		if (!(input[i] == decompressed[i] && input[i] == decompressed2[i] 
+			&& input[i] == decompressed3[i] && input[i] == decompressed4[i]))
 		{
 			std::cout << "mismatch at index " << i << std::endl;
 		}
