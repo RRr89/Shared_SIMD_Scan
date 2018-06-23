@@ -71,11 +71,21 @@ void measure_decompression()
 
 	// ------------
 
+	_clock();
+
+	int* decompressed5 = new int[input_size]();
+	decompress_128_9bit_aligned((__m128i*)compressed, input_size, decompressed5);
+
+	std::cout << "sse 128 (9bit optimized + aligned loads): " << _clock().count() << " ns" << std::endl;
+
+	// ------------
+
 	// checking results...
 	for (size_t i = 0; i < input_size; i++) 
 	{
 		if (!(input[i] == decompressed[i] && input[i] == decompressed2[i] 
-			&& input[i] == decompressed3[i] && input[i] == decompressed4[i]))
+			&& input[i] == decompressed3[i] && input[i] == decompressed4[i]
+			&& input[i] == decompressed5[i]))
 		{
 			std::cout << "mismatch at index " << i << std::endl;
 		}
