@@ -83,9 +83,9 @@ void measure_decompression()
 	_clock();
 
 	int* decompressed6 = new int[input_size]();
-	decompress_256_9bit((__m128i*)compressed, input_size, decompressed6);
+	decompress_256((__m128i*)compressed, input_size, decompressed6);
 
-	std::cout << "avx 256 (9bit optimized): " << _clock().count() << " ns" << std::endl;
+	std::cout << "avx 256: " << _clock().count() << " ns" << std::endl;
 
 	// ------------
 

@@ -338,9 +338,9 @@ void decompress_128_9bit_aligned(__m128i* input, size_t input_size, int* output)
 	}
 }
 
-void decompress_256_9bit(__m128i* input, size_t input_size, int* output)
+void decompress_256(__m128i* input, size_t input_size, int* output)
 {
-	size_t compression = 9;
+	size_t compression = BITS_NEEDED;
 	size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
 
 	//__m256i source = _mm256_loadu_si256(input);
@@ -350,7 +350,11 @@ void decompress_256_9bit(__m128i* input, size_t input_size, int* output)
 	size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
 
 	// shuffle mask
-	size_t input_offset[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+	size_t input_offset[8];
+	for (size_t i = 0; i < 8; i++)
+	{
+		input_offset[i] = (compression * i) / 8;
+	}
 
 	__m256i shuffle_mask = _mm256_setr_epi8(
 		input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
@@ -364,7 +368,11 @@ void decompress_256_9bit(__m128i* input, size_t input_size, int* output)
 		input_offset[7], input_offset[7] + 1, input_offset[7] + 2, input_offset[7] + 3);
 	
 	// shift mask
-	size_t padding[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+	size_t padding[8];
+	for (size_t i = 0; i < 8; i++)
+	{
+		padding[i] = (compression * i) % 8;
+	}
 
 	__m256i shift_mask = _mm256_setr_epi32(
 		1 << (free_bits - padding[0]),
