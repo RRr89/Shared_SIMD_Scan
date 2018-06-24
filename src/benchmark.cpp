@@ -40,7 +40,7 @@ void measure_decompression()
 	std::vector<uint16_t> decompressed;
 	decompress_standard(compressed, input_size, decompressed);
 	
-	std::cout << "slow: " << _clock().count() << " ns" << std::endl;
+	std::cout << "unvectorized: " << _clock().count() << " ns" << std::endl;
 
 	// ------------
 
@@ -80,12 +80,21 @@ void measure_decompression()
 
 	// ------------
 
+	_clock();
+
+	int* decompressed6 = new int[input_size]();
+	decompress_256_9bit((__m128i*)compressed, input_size, decompressed6);
+
+	std::cout << "avx 256 (9bit optimized): " << _clock().count() << " ns" << std::endl;
+
+	// ------------
+
 	// checking results...
 	for (size_t i = 0; i < input_size; i++) 
 	{
 		if (!(input[i] == decompressed[i] && input[i] == decompressed2[i] 
 			&& input[i] == decompressed3[i] && input[i] == decompressed4[i]
-			&& input[i] == decompressed5[i]))
+			&& input[i] == decompressed5[i] && input[i] == decompressed6[i]))
 		{
 			std::cout << "mismatch at index " << i << std::endl;
 		}

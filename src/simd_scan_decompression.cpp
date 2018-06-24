@@ -328,11 +328,72 @@ void decompress_128_9bit_aligned(__m128i* input, size_t input_size, int* output)
 
 		// load next
 		total_processed_bytes = output_index * compression / 8;
-		if (total_processed_bytes / 16 != mi) {
+		if (total_processed_bytes / 16 != mi) 
+		{
 			mi++;
 			current = next;
 			next = _mm_load_si128(&input[mi + 1]);
 		}
 		source = _mm_alignr_epi8_nonconst(next, current, total_processed_bytes % 16);
+	}
+}
+
+void decompress_256_9bit(__m128i* input, size_t input_size, int* output)
+{
+	size_t compression = 9;
+	size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
+
+	//__m256i source = _mm256_loadu_si256(input);
+	__m256i source = _mm256_loadu2_m128i(input, input);
+
+	size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
+	size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
+
+	// shuffle mask
+	size_t input_offset[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+	__m256i shuffle_mask = _mm256_setr_epi8(
+		input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
+		input_offset[1], input_offset[1] + 1, input_offset[1] + 2, input_offset[1] + 3,
+		input_offset[2], input_offset[2] + 1, input_offset[2] + 2, input_offset[2] + 3,
+		input_offset[3], input_offset[3] + 1, input_offset[3] + 2, input_offset[3] + 3,
+
+		input_offset[4], input_offset[4] + 1, input_offset[4] + 2, input_offset[4] + 3,
+		input_offset[5], input_offset[5] + 1, input_offset[5] + 2, input_offset[5] + 3,
+		input_offset[6], input_offset[6] + 1, input_offset[6] + 2, input_offset[6] + 3,
+		input_offset[7], input_offset[7] + 1, input_offset[7] + 2, input_offset[7] + 3);
+	
+	// shift mask
+	size_t padding[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+	__m256i shift_mask = _mm256_setr_epi32(
+		1 << (free_bits - padding[0]),
+		1 << (free_bits - padding[1]),
+		1 << (free_bits - padding[2]),
+		1 << (free_bits - padding[3]),
+		1 << (free_bits - padding[4]),
+		1 << (free_bits - padding[5]),
+		1 << (free_bits - padding[6]),
+		1 << (free_bits - padding[7]));
+
+	while (output_index < input_size)
+	{
+		__m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
+
+		__m256i c = _mm256_mullo_epi32(b, shift_mask);
+
+		// shift right by fixed amount
+		__m256i d = _mm256_srli_epi32(c, 32 - compression);
+
+		// TODO handle cases where output size in not multiple of 4
+		_mm256_storeu_si256((__m256i*)&output[output_index], d);
+
+		output_index += 8;
+
+		// load next
+		total_processed_bytes = output_index * compression / 8;
+		//source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+		__m128i* next = (__m128i*)&((uint8_t*)input)[total_processed_bytes];
+		source = _mm256_loadu2_m128i(next, next);
 	}
 }
