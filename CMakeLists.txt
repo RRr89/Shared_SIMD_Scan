@@ -8,6 +8,10 @@ file(GLOB_RECURSE SRC_FILES
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src)
 
+if (MSVC)
+    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
+endif()
+
 # main library
 add_library(${PROJECT_NAME}_lib ${SRC_FILES})
 target_include_directories(${PROJECT_NAME}_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)

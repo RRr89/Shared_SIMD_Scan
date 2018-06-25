@@ -25,6 +25,7 @@ void decompress_128_9bit(__m128i* input, size_t input_size, int* output);
 void decompress_128(__m128i* input, size_t input_size, int* output);
 void decompress_128_aligned(__m128i* input, size_t input_size, int* output);
 void decompress_256(__m128i* input, size_t input_size, int* output);
+void decompress_256_avx2(__m128i* input, size_t input_size, int* output);
 
 /*
 * SIMD DECOMPRESS - decompresses the compressed input use 16 Byte, 4 Byte and Bit Alignment as described in the paper
