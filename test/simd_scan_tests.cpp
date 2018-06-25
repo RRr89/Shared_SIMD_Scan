@@ -32,7 +32,7 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 	{
 		// TODO remove reserve once compression has been updated...
 		int *result_buffer = new int[input_numbers.size() + 4]();
-		decompress_128((__m128i*)compressed, input_numbers.size(), result_buffer);
+		decompress_128_sweep((__m128i*)compressed, input_numbers.size(), result_buffer);
 
 		for (size_t i = 0; i < input_numbers.size(); i++)
 		{

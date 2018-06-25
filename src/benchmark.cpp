@@ -15,7 +15,7 @@ std::chrono::nanoseconds _clock()
 	return elapsed;
 }
 
-void measure_decompression() 
+void bench_decompression() 
 {
 	size_t compression = 9;
 	size_t buffer_target_size = 50 * 1 << 20; // 50 megabytes
@@ -47,16 +47,16 @@ void measure_decompression()
 	_clock();
 
 	int* decompressed2 = new int[input_size]();
-	decompress_128((__m128i*)compressed, input_size, decompressed2);
+	decompress_128_sweep((__m128i*)compressed, input_size, decompressed2);
 	
-	std::cout << "sse 128: " << _clock().count() << " ns" << std::endl;
+	std::cout << "sse 128 (sweep): " << _clock().count() << " ns" << std::endl;
 
 	// ------------	
 
 	_clock();
 
 	int* decompressed3 = new int[input_size]();
-	decompress_128_1group((__m128i*)compressed, input_size, decompressed3);
+	decompress_128_nosweep((__m128i*)compressed, input_size, decompressed3);
 
 	std::cout << "sse 128 (load after 4): " << _clock().count() << " ns" << std::endl;
 
@@ -65,18 +65,27 @@ void measure_decompression()
 	_clock();
 
 	int* decompressed4 = new int[input_size]();
-	decompress_128_9bit_1group((__m128i*)compressed, input_size, decompressed4);
+	decompress_128_9bit((__m128i*)compressed, input_size, decompressed4);
 
-	std::cout << "sse 128 (9bit optimized): " << _clock().count() << " ns" << std::endl;
+	std::cout << "sse 128 (9bit optimized masks): " << _clock().count() << " ns" << std::endl;
+
+	// ------------	
+
+	_clock();
+
+	int* decompressed7 = new int[input_size]();
+	decompress_128((__m128i*)compressed, input_size, decompressed7);
+
+	std::cout << "sse 128 (optimized masks): " << _clock().count() << " ns" << std::endl;
 
 	// ------------
 
 	_clock();
 
 	int* decompressed5 = new int[input_size]();
-	decompress_128_9bit_aligned((__m128i*)compressed, input_size, decompressed5);
+	decompress_128_aligned((__m128i*)compressed, input_size, decompressed5);
 
-	std::cout << "sse 128 (9bit optimized + aligned loads): " << _clock().count() << " ns" << std::endl;
+	std::cout << "sse 128 (optimized masks + aligned loads): " << _clock().count() << " ns" << std::endl;
 
 	// ------------
 
@@ -94,10 +103,31 @@ void measure_decompression()
 	{
 		if (!(input[i] == decompressed[i] && input[i] == decompressed2[i] 
 			&& input[i] == decompressed3[i] && input[i] == decompressed4[i]
-			&& input[i] == decompressed5[i] && input[i] == decompressed6[i]))
+			&& input[i] == decompressed5[i] && input[i] == decompressed6[i]
+			&& input[i] == decompressed7[i]))
 		{
 			std::cout << "mismatch at index " << i << std::endl;
 		}
 	}
 	std::cout << "finished checking results" << std::endl;
+}
+
+void bench_memory() 
+{
+	const int size = 50 * 1 << 20;    //  50 MB
+
+	auto a = std::vector<uint8_t>(size);
+	for (uint8_t& x : a) x = rand() & 0xFF;
+
+	auto b = std::vector<uint8_t>(size);
+
+	_clock();
+	
+	for (size_t i = 0; i < size; i++)
+	{
+		b[i] = a[i];
+	}
+
+	std::cout.imbue(std::locale(""));
+	std::cout << "copy memory (50mb): " << _clock().count() << " ns" << std::endl;
 }

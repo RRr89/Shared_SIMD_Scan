@@ -9,7 +9,9 @@
 
 int main(int argc, char* argv)
 {
-	measure_decompression();
+	bench_memory();
+	std::cout << "------" << std::endl;
+	bench_decompression();
 
 	std::cin.get();
 	return 0;

@@ -1,3 +1,4 @@
 #pragma once
 
-void measure_decompression();
+void bench_memory();
+void bench_decompression();

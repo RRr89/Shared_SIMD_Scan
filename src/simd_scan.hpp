@@ -19,10 +19,11 @@ void decompress_standard(__m256i* input, size_t input_size, std::vector<uint16_t
 /*
 * SIMD decompression (SSE3; 128bit)
 */
+void decompress_128_sweep(__m128i* input, size_t input_size, int* output);
+void decompress_128_nosweep(__m128i* input, size_t input_size, int* output);
+void decompress_128_9bit(__m128i* input, size_t input_size, int* output);
 void decompress_128(__m128i* input, size_t input_size, int* output);
-void decompress_128_1group(__m128i* input, size_t input_size, int* output);
-void decompress_128_9bit_1group(__m128i* input, size_t input_size, int* output);
-void decompress_128_9bit_aligned(__m128i* input, size_t input_size, int* output);
+void decompress_128_aligned(__m128i* input, size_t input_size, int* output);
 void decompress_256(__m128i* input, size_t input_size, int* output);
 
 /*
