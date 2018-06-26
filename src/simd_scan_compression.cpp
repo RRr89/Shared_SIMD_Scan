@@ -1,6 +1,6 @@
 #include "simd_scan.hpp"
 
-__m256i* compress_9bit_input(std::vector<uint16_t>& input)
+avxiptr_t compress_9bit_input(std::vector<uint16_t>& input)
 {
 	auto bits_needed = BITS_NEEDED;
 	auto mem_size = bits_needed * input.size();
@@ -45,5 +45,5 @@ __m256i* compress_9bit_input(std::vector<uint16_t>& input)
 		}
 	}
 
-	return (__m256i*) buffer;
+	return (avxiptr_t) buffer;
 }

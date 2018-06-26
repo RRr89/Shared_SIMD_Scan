@@ -1,10 +1,14 @@
+
+#include "benchmark.hpp"
+#include "simd_scan.hpp"
+
 #include <chrono>
 #include <vector>
 #include <iomanip>
 #include <sstream>
 
-#include "benchmark.hpp"
-#include "simd_scan.hpp"
+static const size_t data_size = 500 * 1<<20; // 500MB
+static const char* const data_size_str = "500 MB";
 
 std::chrono::nanoseconds _clock() 
 {
@@ -15,11 +19,22 @@ std::chrono::nanoseconds _clock()
 	return elapsed;
 }
 
+void print_numbers(const char* benchmark, const size_t elapsed_time_us[5])
+{
+    std::cout << benchmark << ": [" << (elapsed_time_us[0]/1000000)
+                           << ", "  << (elapsed_time_us[1]/1000000)
+                           << ", "  << (elapsed_time_us[1]/1000000)
+                           << ", "  << (elapsed_time_us[1]/1000000)
+                           << ", "  << (elapsed_time_us[1]/1000000)
+                           << "] ms" << std::endl;
+}
+
 void bench_decompression() 
 {
 	size_t compression = 9;
-	size_t buffer_target_size = 50 * 1 << 20; // 50 megabytes
+	size_t buffer_target_size = data_size;
 	size_t input_size = buffer_target_size * 8 / compression;
+        size_t elapsed_time_us[5];
 	
 	std::vector<uint16_t> input(input_size);
 	for (size_t i = 0; i < input_size; i++)
@@ -27,7 +42,7 @@ void bench_decompression()
 		input[i] = (uint16_t)(i & ((1 << compression) - 1));
 	}
 
-	__m256i* compressed = compress_9bit_input(input);
+	avxiptr_t compressed = compress_9bit_input(input);
 
 	std::cout.imbue(std::locale(""));
 
@@ -35,59 +50,78 @@ void bench_decompression()
 
 	// ------------
 
-	_clock();
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
 	
-	std::vector<uint16_t> decompressed;
-	decompress_standard(compressed, input_size, decompressed);
-	
-	std::cout << "unvectorized: " << _clock().count() << " ns" << std::endl;
+            std::vector<uint16_t> decompressed;
+            decompress_standard(compressed, input_size, decompressed);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("unvectorized", elapsed_time_us);
 
 	// ------------
 
-	_clock();
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
 
-	int* decompressed2 = new int[input_size]();
-	decompress_128_sweep((__m128i*)compressed, input_size, decompressed2);
+            int* decompressed2 = new int[input_size]();
+            decompress_128_sweep((__m128i*)compressed, input_size, decompressed2);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("sse 128 (sweep)", elapsed_time_us);
+
+	// ------------	
+
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
+
+            int* decompressed3 = new int[input_size]();
+            decompress_128_nosweep((__m128i*)compressed, input_size, decompressed3);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("sse 128 (load after 4)", elapsed_time_us);
+
+	// ------------	
 	
-	std::cout << "sse 128 (sweep): " << _clock().count() << " ns" << std::endl;
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
+
+            int* decompressed4 = new int[input_size]();
+            decompress_128_9bit((__m128i*)compressed, input_size, decompressed4);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("sse 128 (9bit optimized masks)", elapsed_time_us);
 
 	// ------------	
 
-	_clock();
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
 
-	int* decompressed3 = new int[input_size]();
-	decompress_128_nosweep((__m128i*)compressed, input_size, decompressed3);
-
-	std::cout << "sse 128 (load after 4): " << _clock().count() << " ns" << std::endl;
-
-	// ------------	
-	
-	_clock();
-
-	int* decompressed4 = new int[input_size]();
-	decompress_128_9bit((__m128i*)compressed, input_size, decompressed4);
-
-	std::cout << "sse 128 (9bit optimized masks): " << _clock().count() << " ns" << std::endl;
-
-	// ------------	
-
-	_clock();
-
-	int* decompressed7 = new int[input_size]();
-	decompress_128((__m128i*)compressed, input_size, decompressed7);
-
-	std::cout << "sse 128 (optimized masks): " << _clock().count() << " ns" << std::endl;
+            int* decompressed7 = new int[input_size]();
+            decompress_128((__m128i*)compressed, input_size, decompressed7);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("sse 128 (optimized masks)", elapsed_time_us);
 
 	// ------------
 
-	_clock();
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
 
-	int* decompressed5 = new int[input_size]();
-	decompress_128_aligned((__m128i*)compressed, input_size, decompressed5);
-
-	std::cout << "sse 128 (optimized masks + aligned loads): " << _clock().count() << " ns" << std::endl;
+            int* decompressed5 = new int[input_size]();
+            decompress_128_aligned((__m128i*)compressed, input_size, decompressed5);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("sse 128 (optimized masks + aligned loads)", elapsed_time_us);
 
 	// ------------
+#ifdef COMPILER_SUPPORTS_AVX512
 
 	_clock();
 
@@ -119,11 +153,14 @@ void bench_decompression()
 		}
 	}
 	std::cout << "finished checking results" << std::endl;
+#else
+        std::cout << "avx 256 is not supported" << std::endl;
+#endif
 }
 
 void bench_memory() 
 {
-	const int size = 50 * 1 << 20;    //  50 MB
+	const int size = data_size;
 
 	auto a = std::vector<uint8_t>(size);
 	for (uint8_t& x : a) x = rand() & 0xFF;
@@ -138,5 +175,6 @@ void bench_memory()
 	}
 
 	std::cout.imbue(std::locale(""));
-	std::cout << "copy memory (50mb): " << _clock().count() << " ns" << std::endl;
+	std::cout << "copy memory (" << data_size_str << "): " << (_clock().count()/1000000) << " ms" << std::endl;
 }
+

@@ -11,6 +11,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src)
 if (MSVC)
     set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
 endif()
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -msse3 -msse4")
 
 # main library
 add_library(${PROJECT_NAME}_lib ${SRC_FILES})

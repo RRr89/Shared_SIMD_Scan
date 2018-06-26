@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdint.h>
 #include <iomanip>
+#include <math.h>
 
 #include "util.hpp"
 
