@@ -47,3 +47,4 @@ avxiptr_t compress_9bit_input(std::vector<uint16_t>& input)
 
 	return (avxiptr_t) buffer;
 }
+

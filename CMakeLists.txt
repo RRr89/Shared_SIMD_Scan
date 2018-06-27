@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 project(shared_simd_scan)
 
+# SET(CMAKE_C_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/gcc)
+# SET(CMAKE_CXX_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/g++)
+
 # main executable
 file(GLOB_RECURSE SRC_FILES 
 	${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -11,7 +14,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src)
 if (MSVC)
     set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
 endif()
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -msse3 -msse4")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -msse3 -msse4 -msse4.1")
+# SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -mavx2")
 
 # main library
 add_library(${PROJECT_NAME}_lib ${SRC_FILES})

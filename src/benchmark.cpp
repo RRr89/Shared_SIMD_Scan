@@ -7,8 +7,8 @@
 #include <iomanip>
 #include <sstream>
 
-static const size_t data_size = 500 * 1<<20; // 500MB
-static const char* const data_size_str = "500 MB";
+static const size_t data_size = 1<<30; // 1 GB
+static const char* const data_size_str = "1 GB";
 
 std::chrono::nanoseconds _clock() 
 {
@@ -50,11 +50,11 @@ void bench_decompression()
 
 	// ------------
 
+        std::vector<uint16_t> decompressed;
+        decompressed.resize(input_size);
         for (int i=0; i<5; ++i)
         {
             _clock();
-	
-            std::vector<uint16_t> decompressed;
             decompress_standard(compressed, input_size, decompressed);
             elapsed_time_us[i] = _clock().count();
         }
@@ -62,11 +62,10 @@ void bench_decompression()
 
 	// ------------
 
+        int* decompressed2 = new int[input_size]();
         for (int i=0; i<5; ++i)
         {
             _clock();
-
-            int* decompressed2 = new int[input_size]();
             decompress_128_sweep((__m128i*)compressed, input_size, decompressed2);
             elapsed_time_us[i] = _clock().count();
         }
@@ -74,11 +73,10 @@ void bench_decompression()
 
 	// ------------	
 
+        int* decompressed3 = new int[input_size]();
         for (int i=0; i<5; ++i)
         {
             _clock();
-
-            int* decompressed3 = new int[input_size]();
             decompress_128_nosweep((__m128i*)compressed, input_size, decompressed3);
             elapsed_time_us[i] = _clock().count();
         }
@@ -86,11 +84,10 @@ void bench_decompression()
 
 	// ------------	
 	
+        int* decompressed4 = new int[input_size]();
         for (int i=0; i<5; ++i)
         {
             _clock();
-
-            int* decompressed4 = new int[input_size]();
             decompress_128_9bit((__m128i*)compressed, input_size, decompressed4);
             elapsed_time_us[i] = _clock().count();
         }
@@ -98,11 +95,10 @@ void bench_decompression()
 
 	// ------------	
 
+        int* decompressed7 = new int[input_size]();
         for (int i=0; i<5; ++i)
         {
             _clock();
-
-            int* decompressed7 = new int[input_size]();
             decompress_128((__m128i*)compressed, input_size, decompressed7);
             elapsed_time_us[i] = _clock().count();
         }
@@ -110,11 +106,10 @@ void bench_decompression()
 
 	// ------------
 
+        int* decompressed5 = new int[input_size]();
         for (int i=0; i<5; ++i)
         {
             _clock();
-
-            int* decompressed5 = new int[input_size]();
             decompress_128_aligned((__m128i*)compressed, input_size, decompressed5);
             elapsed_time_us[i] = _clock().count();
         }
@@ -122,22 +117,25 @@ void bench_decompression()
 
 	// ------------
 #ifdef COMPILER_SUPPORTS_AVX512
-
-	_clock();
-
-	int* decompressed6 = new int[input_size]();
-	decompress_256((__m128i*)compressed, input_size, decompressed6);
-
-	std::cout << "avx 256: " << _clock().count() << " ns" << std::endl;
+        int* decompressed6 = new int[input_size]();
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
+            decompress_256((__m128i*)compressed, input_size, decompressed6);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("avx 256", elapsed_time_us);
 
 	// ------------
 
-	_clock();
-
-	int* decompressed8 = new int[input_size]();
-	decompress_256_avx2((__m128i*)compressed, input_size, decompressed8);
-
-	std::cout << "avx 256 (avx2 shift): " << _clock().count() << " ns" << std::endl;
+        int* decompressed8 = new int[input_size]();
+        for (int i=0; i<5; ++i)
+        {
+            _clock();
+            decompress_256_avx2((__m128i*)compressed, input_size, decompressed8);
+            elapsed_time_us[i] = _clock().count();
+        }
+        print_numbers("avx 256 (avx2 shift)", elapsed_time_us);
 
 	// ------------
 
@@ -153,9 +151,16 @@ void bench_decompression()
 		}
 	}
 	std::cout << "finished checking results" << std::endl;
+        delete[] decompressed6;
+        delete[] decompressed8;
 #else
         std::cout << "avx 256 is not supported" << std::endl;
 #endif
+        delete[] decompressed2;
+        delete[] decompressed3;
+        delete[] decompressed4;
+        delete[] decompressed5;
+        delete[] decompressed7;
 }
 
 void bench_memory() 

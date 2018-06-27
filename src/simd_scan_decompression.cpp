@@ -3,8 +3,6 @@
 
 void decompress_standard(avxiptr_t input, size_t input_size, std::vector<uint16_t>& output)
 {
-	output.resize(input_size);
-
 	uint64_t* in = reinterpret_cast<uint64_t*>(input);
 	auto bits_needed = BITS_NEEDED;
 	auto mem_size = bits_needed * input_size;
@@ -427,6 +425,17 @@ void decompress_128_aligned(__m128i* input, size_t input_size, int* output)
 }
 
 #ifdef COMPILER_SUPPORTS_AVX512
+// from https://git.ics.ele.tue.nl/5LIM0-sources/clang/commit/db163c87f990653b59fcc5f6e4864b652f4a49bd
+static __inline __m256i __attribute__((__always_inline__, __nodebug__))
+_mm256_loadu2_m128i(__m128i const *addr_hi, __m128i const *addr_lo)
+{
+  struct __loadu_si128 {
+    __m128i v;
+  } __attribute__((packed, may_alias));
+  __m256i v256 = _mm256_castsi128_si256(((struct __loadu_si128*)addr_lo)->v);
+  return _mm256_insertf128_si256(v256, ((struct __loadu_si128*)addr_hi)->v, 1);
+}
+
 void decompress_256(__m128i* input, size_t input_size, int* output)
 {
 	size_t compression = BITS_NEEDED;
