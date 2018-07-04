@@ -22,9 +22,9 @@ void print_numbers(const char* benchmark, const size_t elapsed_time_us[5])
 {
     std::cout << benchmark << ": [" << (elapsed_time_us[0]/1000000)
                            << ", "  << (elapsed_time_us[1]/1000000)
-                           << ", "  << (elapsed_time_us[1]/1000000)
-                           << ", "  << (elapsed_time_us[1]/1000000)
-                           << ", "  << (elapsed_time_us[1]/1000000)
+                           << ", "  << (elapsed_time_us[2]/1000000)
+                           << ", "  << (elapsed_time_us[3]/1000000)
+                           << ", "  << (elapsed_time_us[4]/1000000)
                            << "] ms" << std::endl;
 }
 
@@ -99,7 +99,6 @@ void bench_decompression()
 
 	// ------------	
 	
-    int* decompressed4 = new int[input_size]();
     for (int i=0; i<5; ++i)
     {
         _clock();
