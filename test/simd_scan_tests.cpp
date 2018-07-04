@@ -13,7 +13,7 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 		input_numbers[i] = (uint16_t) i;
 	}
 
-	avxiptr_t compressed = compress_9bit_input(input_numbers);
+	__m128i* compressed = (__m128i*)compress_9bit_input(input_numbers);
 
 	SECTION("Non-vectorized decompression") 
 	{
@@ -48,7 +48,7 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
 	std::vector<uint16_t> input_numbers{ 1, 2, 3, 4, 5,
 		6, 7, 8, 9, 10, 11, 12 };
 
-	avxiptr_t compressed_data = compress_9bit_input(input_numbers);
+	__m128i* compressed_data = (__m128i*) compress_9bit_input(input_numbers);
 	int qualified_tuples = scan(3, 8, compressed_data, input_numbers.size());
 	REQUIRE(qualified_tuples == 6);
 }

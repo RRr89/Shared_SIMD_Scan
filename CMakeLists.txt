@@ -4,6 +4,9 @@ project(shared_simd_scan)
 # SET(CMAKE_C_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/gcc)
 # SET(CMAKE_CXX_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/g++)
 
+option(ENABLE_AVX "Enable AVX-aware code" ON)
+option(ENABLE_AVX2 "Enable AVX2-aware code (AVX must be enabled)" ON)
+
 # main executable
 file(GLOB_RECURSE SRC_FILES 
 	${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -11,11 +14,34 @@ file(GLOB_RECURSE SRC_FILES
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src)
 
-if (MSVC)
-    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+	# GCC Flags
+
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -msse3 -msse4 -msse4.1")
+
+	if (ENABLE_AVX)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+
+		if(ENABLE_AVX2)
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+		endif()
+	endif()
+
+
+elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+	# MSVC Flags
+
+	# needed to use some VS profiler features
+	set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
+
+	if (ENABLE_AVX)
+		target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX)
+
+		if(ENABLE_AVX2)
+			target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX2)
+		endif()
+	endif()
 endif()
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -msse3 -msse4 -msse4.1")
-# SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -mavx2")
 
 # main library
 add_library(${PROJECT_NAME}_lib ${SRC_FILES})

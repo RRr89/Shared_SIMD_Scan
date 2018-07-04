@@ -1,7 +1,7 @@
 #include "simd_scan.hpp"
 #include "util.hpp"
 
-void decompress_standard(avxiptr_t input, size_t input_size, std::vector<uint16_t>& output)
+void decompress_standard(__m128i* input, size_t input_size, std::vector<uint16_t>& output)
 {
 	uint64_t* in = reinterpret_cast<uint64_t*>(input);
 	auto bits_needed = BITS_NEEDED;
@@ -424,25 +424,14 @@ void decompress_128_aligned(__m128i* input, size_t input_size, int* output)
 	}
 }
 
-#ifdef COMPILER_SUPPORTS_AVX512
-// from https://git.ics.ele.tue.nl/5LIM0-sources/clang/commit/db163c87f990653b59fcc5f6e4864b652f4a49bd
-static __inline __m256i __attribute__((__always_inline__, __nodebug__))
-_mm256_loadu2_m128i(__m128i const *addr_hi, __m128i const *addr_lo)
-{
-  struct __loadu_si128 {
-    __m128i v;
-  } __attribute__((packed, may_alias));
-  __m256i v256 = _mm256_castsi128_si256(((struct __loadu_si128*)addr_lo)->v);
-  return _mm256_insertf128_si256(v256, ((struct __loadu_si128*)addr_hi)->v, 1);
-}
-
+#ifdef __AVX__
 void decompress_256(__m128i* input, size_t input_size, int* output)
 {
 	size_t compression = BITS_NEEDED;
 	size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
 
 	//avxi_t source = _mm256_loadu_si256(input);
-	avxi_t source = _mm256_loadu2_m128i(input, input);
+	__m256i source = _mm256_loadu2_m128i(input, input);
 
 	size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
 	size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
@@ -454,7 +443,7 @@ void decompress_256(__m128i* input, size_t input_size, int* output)
 		input_offset[i] = (compression * i) / 8;
 	}
 
-	avxi_t shuffle_mask = _mm256_setr_epi8(
+	__m256i shuffle_mask = _mm256_setr_epi8(
 		input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
 		input_offset[1], input_offset[1] + 1, input_offset[1] + 2, input_offset[1] + 3,
 		input_offset[2], input_offset[2] + 1, input_offset[2] + 2, input_offset[2] + 3,
@@ -472,7 +461,7 @@ void decompress_256(__m128i* input, size_t input_size, int* output)
 		padding[i] = (compression * i) % 8;
 	}
 
-	avxi_t shift_mask = _mm256_setr_epi32(
+	__m256i shift_mask = _mm256_setr_epi32(
 		1 << (free_bits - padding[0]),
 		1 << (free_bits - padding[1]),
 		1 << (free_bits - padding[2]),
@@ -484,15 +473,15 @@ void decompress_256(__m128i* input, size_t input_size, int* output)
 
 	while (output_index < input_size)
 	{
-		avxi_t b = _mm256_shuffle_epi8(source, shuffle_mask);
+		__m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
 
-		avxi_t c = _mm256_mullo_epi32(b, shift_mask);
+		__m256i c = _mm256_mullo_epi32(b, shift_mask);
 
 		// shift right by fixed amount
-		avxi_t d = _mm256_srli_epi32(c, 32 - compression);
+		__m256i d = _mm256_srli_epi32(c, 32 - compression);
 
 		// TODO handle cases where output size in not multiple of 4
-		_mm256_storeu_si256((avxiptr_t)&output[output_index], d);
+		_mm256_storeu_si256((__m256i*)&output[output_index], d);
 
 		output_index += 8;
 
@@ -503,14 +492,16 @@ void decompress_256(__m128i* input, size_t input_size, int* output)
 		source = _mm256_loadu2_m128i(next, next);
 	}
 }
+#endif
 
+#ifdef __AVX2__
 void decompress_256_avx2(__m128i* input, size_t input_size, int* output)
 {
 	size_t compression = BITS_NEEDED;
 	size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
 
 										 //avxi_t source = _mm256_loadu_si256(input);
-	avxi_t source = _mm256_loadu2_m128i(input, input);
+	__m256i source = _mm256_loadu2_m128i(input, input);
 
 	size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
 	size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
@@ -522,7 +513,7 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output)
 		input_offset[i] = (compression * i) / 8;
 	}
 
-	avxi_t shuffle_mask = _mm256_setr_epi8(
+	__m256i shuffle_mask = _mm256_setr_epi8(
 		input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
 		input_offset[1], input_offset[1] + 1, input_offset[1] + 2, input_offset[1] + 3,
 		input_offset[2], input_offset[2] + 1, input_offset[2] + 2, input_offset[2] + 3,
@@ -540,25 +531,25 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output)
 		padding[i] = (compression * i) % 8;
 	}
 
-	avxi_t shift_mask = _mm256_setr_epi32(
+	__m256i shift_mask = _mm256_setr_epi32(
 		padding[0], padding[1], padding[2], padding[3], 
 		padding[4], padding[5], padding[6], padding[7]);
 
 	// and masking (is needed here since we only do one shift!)	
 	uint32_t mask = (1 << compression) - 1;
-	avxi_t and_mask = _mm256_set1_epi32(mask);
+	__m256i and_mask = _mm256_set1_epi32(mask);
 
 	while (output_index < input_size)
 	{
-		avxi_t b = _mm256_shuffle_epi8(source, shuffle_mask);
+		__m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
 
 		// shift right by variable amount (according to static shift mask)
-		avxi_t c = _mm256_srlv_epi32(b, shift_mask);
+		__m256i c = _mm256_srlv_epi32(b, shift_mask);
 
-		avxi_t d = _mm256_and_si256(c, and_mask);
+		__m256i d = _mm256_and_si256(c, and_mask);
 
 		// TODO handle cases where output size in not multiple of 4
-		_mm256_storeu_si256((avxiptr_t)&output[output_index], d);
+		_mm256_storeu_si256((__m256i*)&output[output_index], d);
 
 		output_index += 8;
 
