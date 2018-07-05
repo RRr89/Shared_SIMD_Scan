@@ -17,10 +17,11 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 
 	SECTION("Non-vectorized decompression") 
 	{
-		std::vector<uint16_t> decompressed;
-		decompress_standard(compressed, input_numbers.size(), decompressed);
-
+		std::vector<int> decompressed;
+                decompressed.resize(input_numbers.size());
 		REQUIRE(decompressed.size() == input_numbers.size());
+
+		decompress_standard(compressed, input_numbers.size(), &decompressed[0]);
 
 		for (size_t i = 0; i < input_numbers.size(); i++)
 		{
@@ -52,3 +53,4 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
 	int qualified_tuples = scan(3, 8, compressed_data, input_numbers.size());
 	REQUIRE(qualified_tuples == 6);
 }
+

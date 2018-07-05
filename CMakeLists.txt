@@ -7,6 +7,8 @@ project(shared_simd_scan)
 option(ENABLE_AVX "Enable AVX-aware code" ON)
 option(ENABLE_AVX2 "Enable AVX2-aware code (AVX must be enabled)" ON)
 
+include(checkVectorizationSupport.cmake)
+
 # main executable
 file(GLOB_RECURSE SRC_FILES 
 	${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -17,9 +19,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src)
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 	# GCC Flags
 
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -msse3 -msse4 -msse4.1")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17 -msse3 -msse4 -msse4.1")
 
-	if (ENABLE_AVX)
+	if (AVX_FOUND)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
 
 		if(ENABLE_AVX2)
@@ -34,7 +36,7 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
 	# needed to use some VS profiler features
 	set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
 
-	if (ENABLE_AVX)
+	if (AVX_FOUND)
 		target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX)
 
 		if(ENABLE_AVX2)

@@ -13,7 +13,7 @@ void* compress_9bit_input(std::vector<uint16_t> &input);
 /*
 * Non-vectorized decompression
 */
-void decompress_standard(__m128i* input, size_t input_size, std::vector<uint16_t>& output);
+void decompress_standard(__m128i* input, size_t input_size, int* output);
 
 /*
 * SIMD decompression (SSE3; 128bit)
