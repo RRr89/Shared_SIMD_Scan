@@ -7,6 +7,7 @@ project(shared_simd_scan)
 option(ENABLE_AVX "Enable AVX-aware code" ON)
 option(ENABLE_AVX2 "Enable AVX2-aware code (AVX must be enabled)" ON)
 
+# doesn't work on Windows!
 include(checkVectorizationSupport.cmake)
 
 # main executable
@@ -36,7 +37,7 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
 	# needed to use some VS profiler features
 	set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
 
-	if (AVX_FOUND)
+	if (ENABLE_AVX)
 		target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX)
 
 		if(ENABLE_AVX2)
