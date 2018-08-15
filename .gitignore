@@ -361,3 +361,6 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+
+# VS related
+CMakeSettings.json
