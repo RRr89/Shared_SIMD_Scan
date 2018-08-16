@@ -40,3 +40,8 @@ void dump_memory(const void* mem, size_t bytes, std::ostream& os)
 		os << std::endl;
 	}
 }
+
+int next_multiple(int number, int multiple)
+{
+	return ((number + multiple - 1) / multiple) * multiple;
+}

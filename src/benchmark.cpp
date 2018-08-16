@@ -1,5 +1,6 @@
 #include "benchmark.hpp"
 #include "simd_scan.hpp"
+#include "util.hpp"
 
 #include <chrono>
 #include <vector>
@@ -52,7 +53,7 @@ void do_decompression_benchmark(
 	std::function<void(__m128i*, size_t, int*)> decompression_function) 
 {
     size_t elapsed_time_us[5];
-    std::unique_ptr<int[]> output_buffer = std::make_unique<int[]>(input_size);
+    std::unique_ptr<int[]> output_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
 
     for (int i = 0; i < 5; ++i)
     {
