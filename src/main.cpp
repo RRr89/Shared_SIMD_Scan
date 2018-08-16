@@ -9,7 +9,10 @@
 
 int main(int argc, char** argv)
 {
-    bench_memory();
+    bench_memory<uint8_t>();
+    bench_memory<uint16_t>();
+    bench_memory<uint32_t>();
+    bench_memory<uint64_t>();
     std::cout << "------" << std::endl;
     bench_decompression();
 

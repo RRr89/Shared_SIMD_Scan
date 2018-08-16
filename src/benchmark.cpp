@@ -80,6 +80,7 @@ void bench_decompression()
     __m128i* compressed = (__m128i*) compress_9bit_input(input);
 
     std::cout.imbue(std::locale(""));
+    std::cout << "## decompression benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
     // ------------
@@ -105,21 +106,27 @@ void bench_decompression()
     std::cout << "finished benchmark" << std::endl;
 }
 
+template<typename T>
 void bench_memory()
 {
-    auto a = std::vector<uint8_t>(data_size);
-    for (uint8_t& x : a) x = rand() & 0xFF;
+    size_t size = data_size / sizeof(T);
+    auto a = std::vector<T>(size);
+    for (T& x : a) x = rand() & 0xFF;
 
-    auto b = std::vector<uint8_t>(data_size);
+    auto b = std::vector<T>(size);
 
     _clock();
 
-    for (size_t i = 0; i < data_size; i++)
+    for (size_t i = 0; i < size; i++)
     {
         b[i] = a[i];
     }
 
     std::cout.imbue(std::locale(""));
-    std::cout << "copy memory (" << data_size_str << "): " << (_clock().count()/1000000) << " ms" << std::endl;
+    std::cout << "copy memory (" << sizeof(T) << " byte(s) at a time, " << data_size_str << "): " << (_clock().count()/1000000) << " ms" << std::endl;
 }
 
+template void bench_memory<uint8_t>();
+template void bench_memory<uint16_t>();
+template void bench_memory<uint32_t>();
+template void bench_memory<uint64_t>();
