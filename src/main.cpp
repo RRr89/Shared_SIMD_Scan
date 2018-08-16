@@ -9,10 +9,10 @@
 
 int main(int argc, char** argv)
 {
-	bench_memory();
-	std::cout << "------" << std::endl;
-	bench_decompression();
+    bench_memory();
+    std::cout << "------" << std::endl;
+    bench_decompression();
 
-	std::cin.get();
-	return 0;
+    std::cin.get();
+    return 0;
 }

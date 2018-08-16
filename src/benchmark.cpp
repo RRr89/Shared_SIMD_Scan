@@ -34,23 +34,23 @@ void print_numbers(std::string benchmark_name, const size_t elapsed_time_us[5])
 
 bool check_result(std::vector<uint16_t> input, int* output, size_t size)
 {
-	for (size_t i = 0; i < size; i++)
-	{
-		if (input[i] != output[i])
-		{
-			std::cout << "first mismatch at index " << i << std::endl;
-			return false;
-		}
-	}
-	return true;
+    for (size_t i = 0; i < size; i++)
+    {
+        if (input[i] != output[i])
+        {
+            std::cout << "first mismatch at index " << i << std::endl;
+            return false;
+        }
+    }
+    return true;
 }
 
 void do_decompression_benchmark(
-	std::string name, 
-	std::vector<uint16_t> input,
-	size_t input_size, 
-	__m128i* compressed_data,
-	std::function<void(__m128i*, size_t, int*)> decompression_function) 
+    std::string name, 
+    std::vector<uint16_t> input,
+    size_t input_size, 
+    __m128i* compressed_data,
+    std::function<void(__m128i*, size_t, int*)> decompression_function) 
 {
     size_t elapsed_time_us[5];
     std::unique_ptr<int[]> output_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
@@ -84,24 +84,24 @@ void bench_decompression()
 
     // ------------
 
-	do_decompression_benchmark("unvectorized", input, input_size, compressed, decompress_standard);
-	do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed, decompress_128_sweep);
-	do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed, decompress_128_nosweep);
-	do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed, decompress_128_9bit);
-	do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed, decompress_128);
-	do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed, decompress_128_aligned);
+    do_decompression_benchmark("unvectorized", input, input_size, compressed, decompress_standard);
+    do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed, decompress_128_sweep);
+    do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed, decompress_128_nosweep);
+    do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed, decompress_128_9bit);
+    do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed, decompress_128);
+    do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed, decompress_128_aligned);
 
 #ifdef __AVX__
-	do_decompression_benchmark("avx 256", input, input_size, compressed, decompress_256);
+    do_decompression_benchmark("avx 256", input, input_size, compressed, decompress_256);
 
 #ifdef __AVX2__
-	do_decompression_benchmark("avx 256 (avx2 shift)", input, input_size, compressed, decompress_256_avx2);
+    do_decompression_benchmark("avx 256 (avx2 shift)", input, input_size, compressed, decompress_256_avx2);
 #endif
 #else
-	std::cout << "avx 256 is not supported" << std::endl;
+    std::cout << "avx 256 is not supported" << std::endl;
 #endif
 
-	std::cout << "finished benchmark" << std::endl;
+    std::cout << "finished benchmark" << std::endl;
 }
 
 void bench_memory()
