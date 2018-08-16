@@ -64,15 +64,12 @@ void decompress_128_sweep(__m128i* input, size_t input_size, int* output)
 
     while (output_index < input_size)
     {
-        // TODO can this be optimized? is this constant?
         size_t input_offset[4] = {
             (compression * (output_index + 0) / 8) - total_processed_bytes,
             (compression * (output_index + 1) / 8) - total_processed_bytes,
             (compression * (output_index + 2) / 8) - total_processed_bytes,
             (compression * (output_index + 3) / 8) - total_processed_bytes
         };
-
-        //std::cout << "input_offset: " << input_offset[0] << " " << input_offset[1] << " " << input_offset[2] << " " << input_offset[3] << std::endl;
 
         __m128i shuffle_mask = _mm_setr_epi8(
             input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
@@ -83,7 +80,6 @@ void decompress_128_sweep(__m128i* input, size_t input_size, int* output)
         __m128i b = _mm_shuffle_epi8(source, shuffle_mask);
 
         // shift left by variable amounts (using integer multiplication)
-        // TODO can this be optimized?
         size_t padding[4] = {
             compression * (output_index + 0) % 8,
             compression * (output_index + 1) % 8,
@@ -102,7 +98,6 @@ void decompress_128_sweep(__m128i* input, size_t input_size, int* output)
         // shift right by fixed amount
         __m128i d = _mm_srli_epi32(c, 32 - compression);
 
-        // TODO handle cases where output size in not multiple of 4
         _mm_storeu_si128((__m128i*)&output[output_index], d);
 
         output_index += 4;
@@ -131,15 +126,12 @@ void decompress_128_nosweep(__m128i* input, size_t input_size, int* output)
 
     while (output_index < input_size)
     {
-        // TODO can this be optimized? is this constant?
         size_t input_offset[4] = {
             (compression * (output_index + 0) / 8) - total_processed_bytes,
             (compression * (output_index + 1) / 8) - total_processed_bytes,
             (compression * (output_index + 2) / 8) - total_processed_bytes,
             (compression * (output_index + 3) / 8) - total_processed_bytes
         };
-
-        //std::cout << "input_offset: " << input_offset[0] << " " << input_offset[1] << " " << input_offset[2] << " " << input_offset[3] << std::endl;
 
         __m128i shuffle_mask = _mm_setr_epi8(
             input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
@@ -150,7 +142,6 @@ void decompress_128_nosweep(__m128i* input, size_t input_size, int* output)
         __m128i b = _mm_shuffle_epi8(source, shuffle_mask);
 
         // shift left by variable amounts (using integer multiplication)
-        // TODO can this be optimized?
         size_t padding[4] = {
             compression * (output_index + 0) % 8,
             compression * (output_index + 1) % 8,
@@ -169,7 +160,6 @@ void decompress_128_nosweep(__m128i* input, size_t input_size, int* output)
         // shift right by fixed amount
         __m128i d = _mm_srli_epi32(c, 32 - compression);
 
-        // TODO handle cases where output size in not multiple of 4
         _mm_storeu_si128((__m128i*)&output[output_index], d);
 
         output_index += 4;
@@ -305,7 +295,6 @@ void decompress_128(__m128i* input, size_t input_size, int* output)
         // shift right by fixed amount
         __m128i d = _mm_srli_epi32(c, 32 - compression);
 
-        // TODO handle cases where output size in not multiple of 4
         _mm_storeu_si128((__m128i*)&output[output_index], d);
 
         output_index += 4;
@@ -407,7 +396,6 @@ void decompress_128_aligned(__m128i* input, size_t input_size, int* output)
         // shift right by fixed amount
         __m128i d = _mm_srli_epi32(c, 32 - compression);
 
-        // TODO handle cases where output size in not multiple of 4
         _mm_storeu_si128((__m128i*)&output[output_index], d);
 
         output_index += 4;
@@ -480,7 +468,6 @@ void decompress_256(__m128i* input, size_t input_size, int* output)
         // shift right by fixed amount
         __m256i d = _mm256_srli_epi32(c, 32 - compression);
 
-        // TODO handle cases where output size in not multiple of 4
         _mm256_storeu_si256((__m256i*)&output[output_index], d);
 
         output_index += 8;
@@ -500,7 +487,6 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output)
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
 
-                                         //avxi_t source = _mm256_loadu_si256(input);
     __m256i source = _mm256_loadu2_m128i(input, input);
 
     size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
@@ -548,7 +534,6 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output)
 
         __m256i d = _mm256_and_si256(c, and_mask);
 
-        // TODO handle cases where output size in not multiple of 4
         _mm256_storeu_si256((__m256i*)&output[output_index], d);
 
         output_index += 8;
