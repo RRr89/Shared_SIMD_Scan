@@ -16,17 +16,14 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 
     __m128i* compressed = (__m128i*)compress_9bit_input(input_numbers);
 
-    SECTION("Non-vectorized decompression") 
+    SECTION("Unvectorized decompression") 
     {
-        std::vector<int> decompressed;
-                decompressed.resize(input_numbers.size());
-        REQUIRE(decompressed.size() == input_numbers.size());
-
-        decompress_unvectorized(compressed, input_numbers.size(), &decompressed[0]);
+        auto result_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
+        decompress_unvectorized(compressed, input_numbers.size(), result_buffer.get());
 
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
-            REQUIRE(input_numbers[i] == decompressed[i]);
+            REQUIRE(input_numbers[i] == result_buffer[i]);
         }
     }
 
@@ -48,15 +45,33 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
         1, 1, 2, 3, 1, 2, 3 };
 
     __m128i* compressed_data = (__m128i*) compress_9bit_input(input_numbers);
-    std::vector<bool> output(input_numbers.size());
-    int predicate_key = 3;
-    int hits = scan_unvectorized(predicate_key, compressed_data, input_numbers.size(), output);
 
-    REQUIRE(hits == 4);
-
-    for (size_t i = 0; i < input_numbers.size(); i++) 
+    SECTION("Unvectorized scan") 
     {
-        REQUIRE(output[i] == (input_numbers[i] == predicate_key));
+        std::vector<bool> output(input_numbers.size());
+        int predicate_key = 3;
+        int hits = scan_unvectorized(predicate_key, compressed_data, input_numbers.size(), output);
+
+        REQUIRE(hits == 4);
+
+        for (size_t i = 0; i < input_numbers.size(); i++)
+        {
+            REQUIRE(output[i] == (input_numbers[i] == predicate_key));
+        }
+    }
+
+    SECTION("SIMD scan (SSE)") 
+    {
+        std::vector<bool> output(next_multiple(input_numbers.size(), 8));
+        int predicate_key = 3;
+        int hits = scan_128(predicate_key, compressed_data, input_numbers.size(), output);
+
+        REQUIRE(hits == 4);
+
+        for (size_t i = 0; i < input_numbers.size(); i++)
+        {
+            REQUIRE(output[i] == (input_numbers[i] == predicate_key));
+        }
     }
 }
 
