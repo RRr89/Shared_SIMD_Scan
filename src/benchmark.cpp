@@ -89,6 +89,7 @@ void bench_decompression()
     do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed, decompress_128_nosweep);
     do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed, decompress_128_9bit);
     do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed, decompress_128);
+    do_decompression_benchmark("sse 128 (optimized masks + unrolled loop)", input, input_size, compressed, decompress_128_unrolled);
     do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed, decompress_128_aligned);
 
 #ifdef __AVX__
