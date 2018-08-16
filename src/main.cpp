@@ -15,6 +15,8 @@ int main(int argc, char** argv)
     bench_memory<uint64_t>();
     std::cout << "------" << std::endl;
     bench_decompression();
+    std::cout << "------" << std::endl;
+    bench_scan();
 
     std::cin.get();
     return 0;

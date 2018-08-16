@@ -32,7 +32,7 @@ void print_numbers(std::string benchmark_name, const size_t elapsed_time_us[5])
         << "] ms" << std::endl;
 }
 
-bool check_result(std::vector<uint16_t> input, int* output, size_t size)
+bool check_decompression_result(std::vector<uint16_t> input, int* output, size_t size)
 {
     for (size_t i = 0; i < size; i++)
     {
@@ -61,8 +61,8 @@ void do_decompression_benchmark(
         decompression_function(compressed_data, input_size, output_buffer.get());
         elapsed_time_us[i] = _clock().count();
     }
-    check_result(input, output_buffer.get(), input_size);
     print_numbers(name, elapsed_time_us);
+    check_decompression_result(input, output_buffer.get(), input_size);
 }
 
 void bench_decompression()
@@ -127,3 +127,61 @@ template void bench_memory<uint8_t>();
 template void bench_memory<uint16_t>();
 template void bench_memory<uint32_t>();
 template void bench_memory<uint64_t>();
+
+bool check_scan_result(std::vector<uint16_t> input, size_t size, std::vector<bool> const& output, int predicate_key)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        if (output[i] != (input[i] == predicate_key))
+        {
+            std::cout << "first mismatch at index " << i << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+void do_scan_benchmark(
+    std::string name,
+    std::vector<uint16_t> input,
+    size_t input_size,
+    __m128i* compressed_data,
+    std::function<int(int, __m128i*, size_t, std::vector<bool>&)> scan_function)
+{
+    int predicate_key = 3;
+    size_t elapsed_time_us[5];
+    std::vector<bool> output_buffer(next_multiple(input_size, 8));
+
+    for (int i = 0; i < 5; ++i)
+    {
+        _clock();
+        scan_function(predicate_key, compressed_data, input_size, output_buffer);
+        elapsed_time_us[i] = _clock().count();
+    }
+    print_numbers(name, elapsed_time_us);
+    check_scan_result(input, input_size, output_buffer, predicate_key);
+}
+
+void bench_scan() 
+{
+    size_t compression = 9;
+    size_t buffer_target_size = data_size;
+    size_t input_size = buffer_target_size * 8 / compression;
+
+    std::vector<uint16_t> input(input_size);
+    for (size_t i = 0; i < input_size; i++)
+    {
+        input[i] = (uint16_t)(i & ((1 << compression) - 1));
+    }
+
+    __m128i* compressed = (__m128i*) compress_9bit_input(input);
+
+    std::cout.imbue(std::locale(""));
+    std::cout << "## scan benchmarks ##" << std::endl;
+    std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
+
+    do_scan_benchmark("unvectorized", input, input_size, compressed, scan_unvectorized);
+    do_scan_benchmark("sse 128", input, input_size, compressed, scan_128);
+
+    std::cout << "finished benchmark" << std::endl;
+}
