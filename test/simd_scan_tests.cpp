@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
+#include "util.hpp"
 #include "simd_scan.hpp"
 
 TEST_CASE("Compress and decompress", "[simd-decompress]")
@@ -21,7 +22,7 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
                 decompressed.resize(input_numbers.size());
         REQUIRE(decompressed.size() == input_numbers.size());
 
-        decompress_standard(compressed, input_numbers.size(), &decompressed[0]);
+        decompress_unvectorized(compressed, input_numbers.size(), &decompressed[0]);
 
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
@@ -31,26 +32,31 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 
     SECTION("SIMD decompression (SSE)") 
     {
-        // TODO remove reserve once compression has been updated...
-        int *result_buffer = new int[input_numbers.size() + 4]();
-        decompress_128_sweep((__m128i*)compressed, input_numbers.size(), result_buffer);
+        auto result_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
+        decompress_128_sweep((__m128i*)compressed, input_numbers.size(), result_buffer.get());
 
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
             REQUIRE(input_numbers[i] == result_buffer[i]);
         }
-
-        delete result_buffer;
     }
 }
 
 TEST_CASE("SIMD Scan", "[simd-scan]")
 {
-    std::vector<uint16_t> input_numbers{ 1, 2, 3, 4, 5,
-        6, 7, 8, 9, 10, 11, 12 };
+    std::vector<uint16_t> input_numbers{ 1, 2, 3, 3, 2,
+        1, 1, 2, 3, 1, 2, 3 };
 
     __m128i* compressed_data = (__m128i*) compress_9bit_input(input_numbers);
-    int qualified_tuples = scan(3, 8, compressed_data, input_numbers.size());
-    REQUIRE(qualified_tuples == 6);
+    std::vector<bool> output(input_numbers.size());
+    int predicate_key = 3;
+    int hits = scan_unvectorized(predicate_key, compressed_data, input_numbers.size(), output);
+
+    REQUIRE(hits == 4);
+
+    for (size_t i = 0; i < input_numbers.size(); i++) 
+    {
+        REQUIRE(output[i] == (input_numbers[i] == predicate_key));
+    }
 }
 

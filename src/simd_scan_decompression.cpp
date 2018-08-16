@@ -1,7 +1,7 @@
 #include "simd_scan.hpp"
 #include "util.hpp"
 
-void decompress_standard(__m128i* input, size_t input_size, int* output)
+void decompress_unvectorized(__m128i* input, size_t input_size, int* output)
 {
     uint64_t* in = reinterpret_cast<uint64_t*>(input);
     auto bits_needed = BITS_NEEDED;

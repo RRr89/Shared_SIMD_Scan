@@ -83,9 +83,7 @@ void bench_decompression()
     std::cout << "## decompression benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
-    // ------------
-
-    do_decompression_benchmark("unvectorized", input, input_size, compressed, decompress_standard);
+    do_decompression_benchmark("unvectorized", input, input_size, compressed, decompress_unvectorized);
     do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed, decompress_128_sweep);
     do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed, decompress_128_nosweep);
     do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed, decompress_128_9bit);
@@ -95,7 +93,6 @@ void bench_decompression()
 
 #ifdef __AVX__
     do_decompression_benchmark("avx 256", input, input_size, compressed, decompress_256);
-
 #ifdef __AVX2__
     do_decompression_benchmark("avx 256 (avx2 shift)", input, input_size, compressed, decompress_256_avx2);
 #endif
