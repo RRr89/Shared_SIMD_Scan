@@ -183,5 +183,11 @@ void bench_scan()
     do_scan_benchmark("unvectorized", input, input_size, compressed, scan_unvectorized);
     do_scan_benchmark("sse 128", input, input_size, compressed, scan_128);
 
+#ifdef __AVX__
+    do_scan_benchmark("avx 256", input, input_size, compressed, scan_256);
+#else
+    std::cout << "avx 256 is not supported" << std::endl;
+#endif
+
     std::cout << "finished benchmark" << std::endl;
 }
