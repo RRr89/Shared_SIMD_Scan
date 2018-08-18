@@ -77,24 +77,25 @@ void bench_decompression()
         input[i] = (uint16_t)(i & ((1 << compression) - 1));
     }
 
-    __m128i* compressed = (__m128i*) compress_9bit_input(input);
+    std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
+    __m128i* compressed_ptr = (__m128i*) compressed.get();
 
     std::cout.imbue(std::locale(""));
     std::cout << "## decompression benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
-    do_decompression_benchmark("unvectorized", input, input_size, compressed, decompress_unvectorized);
-    do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed, decompress_128_sweep);
-    do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed, decompress_128_nosweep);
-    do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed, decompress_128_9bit);
-    do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed, decompress_128);
-    do_decompression_benchmark("sse 128 (optimized masks + unrolled loop)", input, input_size, compressed, decompress_128_unrolled);
-    do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed, decompress_128_aligned);
+    do_decompression_benchmark("unvectorized", input, input_size, compressed_ptr, decompress_unvectorized);
+    do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed_ptr, decompress_128_sweep);
+    do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed_ptr, decompress_128_nosweep);
+    do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed_ptr, decompress_128_9bit);
+    do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed_ptr, decompress_128);
+    do_decompression_benchmark("sse 128 (optimized masks + unrolled loop)", input, input_size, compressed_ptr, decompress_128_unrolled);
+    do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed_ptr, decompress_128_aligned);
 
 #ifdef __AVX__
-    do_decompression_benchmark("avx 256", input, input_size, compressed, decompress_256);
+    do_decompression_benchmark("avx 256", input, input_size, compressed_ptr, decompress_256);
 #ifdef __AVX2__
-    do_decompression_benchmark("avx 256 (avx2 shift)", input, input_size, compressed, decompress_256_avx2);
+    do_decompression_benchmark("avx 256 (avx2 shift)", input, input_size, compressed_ptr, decompress_256_avx2);
 #endif
 #else
     std::cout << "avx 256 is not supported" << std::endl;
@@ -174,17 +175,18 @@ void bench_scan()
         input[i] = (uint16_t)(i & ((1 << compression) - 1));
     }
 
-    __m128i* compressed = (__m128i*) compress_9bit_input(input);
+    std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
+    __m128i* compressed_ptr = (__m128i*) compressed.get();
 
     std::cout.imbue(std::locale(""));
     std::cout << "## scan benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
-    do_scan_benchmark("unvectorized", input, input_size, compressed, scan_unvectorized);
-    do_scan_benchmark("sse 128", input, input_size, compressed, scan_128);
+    do_scan_benchmark("unvectorized", input, input_size, compressed_ptr, scan_unvectorized);
+    do_scan_benchmark("sse 128", input, input_size, compressed_ptr, scan_128);
 
 #ifdef __AVX__
-    do_scan_benchmark("avx 256", input, input_size, compressed, scan_256);
+    do_scan_benchmark("avx 256", input, input_size, compressed_ptr, scan_256);
 #else
     std::cout << "avx 256 is not supported" << std::endl;
 #endif

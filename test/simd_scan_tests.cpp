@@ -14,12 +14,13 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
         input_numbers[i] = (uint16_t) i;
     }
 
-    __m128i* compressed = (__m128i*)compress_9bit_input(input_numbers);
+    auto compressed = compress_9bit_input(input_numbers);
+    __m128i* compressed_ptr = (__m128i*) compressed.get();
 
     SECTION("Unvectorized decompression") 
     {
         auto result_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
-        decompress_unvectorized(compressed, input_numbers.size(), result_buffer.get());
+        decompress_unvectorized(compressed_ptr, input_numbers.size(), result_buffer.get());
 
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
@@ -30,7 +31,7 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
     SECTION("SIMD decompression (SSE)") 
     {
         auto result_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
-        decompress_128_sweep((__m128i*)compressed, input_numbers.size(), result_buffer.get());
+        decompress_128_sweep(compressed_ptr, input_numbers.size(), result_buffer.get());
 
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
@@ -44,13 +45,14 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
     std::vector<uint16_t> input_numbers{ 1, 2, 3, 3, 2,
         1, 1, 2, 3, 1, 2, 3 };
 
-    __m128i* compressed_data = (__m128i*) compress_9bit_input(input_numbers);
+    auto compressed = compress_9bit_input(input_numbers);
+    __m128i* compressed_ptr = (__m128i*) compressed.get();
 
     SECTION("Unvectorized scan") 
     {
         std::vector<bool> output(input_numbers.size());
         int predicate_key = 3;
-        int hits = scan_unvectorized(predicate_key, compressed_data, input_numbers.size(), output);
+        int hits = scan_unvectorized(predicate_key, compressed_ptr, input_numbers.size(), output);
 
         REQUIRE(hits == 4);
 
@@ -64,7 +66,7 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
     {
         std::vector<bool> output(next_multiple(input_numbers.size(), 8));
         int predicate_key = 3;
-        int hits = scan_128(predicate_key, compressed_data, input_numbers.size(), output);
+        int hits = scan_128(predicate_key, compressed_ptr, input_numbers.size(), output);
 
         REQUIRE(hits == 4);
 

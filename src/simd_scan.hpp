@@ -5,10 +5,11 @@
 #include <cmath>
 #include <vector>
 #include <bitset>
+#include <memory>
 
 #define BITS_NEEDED 9
 
-void* compress_9bit_input(std::vector<uint16_t> &input);
+std::unique_ptr<uint64_t[]> compress_9bit_input(std::vector<uint16_t>& input);
 
 /*
 * Non-vectorized decompression
@@ -48,9 +49,18 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output);
 
 //int scan(int predicate_low, int predicate_high, __m128i* compressed_input, int input_size);
 
+/*
+* SIMD scan 
+*/
 int scan_unvectorized(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output);
 int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output);
 
 #ifdef __AVX__
 int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output);
 #endif
+
+/*
+* Shared SIMD scan
+*/
+
+//int shared_scan(std::vector<int> predicate_keys, __m128* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
