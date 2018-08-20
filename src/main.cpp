@@ -17,6 +17,8 @@ int main(int argc, char** argv)
     bench_decompression();
     std::cout << "------" << std::endl;
     bench_scan();
+    std::cout << "------" << std::endl;
+    bench_shared_scan();
 
     std::cin.get();
     return 0;

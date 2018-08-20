@@ -8,6 +8,7 @@
 #include <sstream>
 #include <memory>
 #include <functional>
+#include <omp.h>
 
 static const size_t data_size = 500 * 1 << 20;
 static const char* const data_size_str = "500 MB";
@@ -172,7 +173,7 @@ void bench_scan()
     std::vector<uint16_t> input(input_size);
     for (size_t i = 0; i < input_size; i++)
     {
-        input[i] = (uint16_t)(i & ((1 << compression) - 1));
+        input[i] = (uint16_t)(i % 5);
     }
 
     std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
@@ -190,6 +191,73 @@ void bench_scan()
 #else
     std::cout << "avx 256 is not supported" << std::endl;
 #endif
+
+    std::cout << "finished benchmark" << std::endl;
+}
+
+void do_shared_scan_benchmark(
+    std::string name,
+    std::vector<uint16_t> input,
+    size_t input_size,
+    __m128i* compressed_data,
+    std::function<void(std::vector<int>&, __m128i*, size_t, std::vector<std::vector<bool>>&)> shared_scan_function,
+    int predicate_key_count)
+{
+    std::vector<int> predicate_keys(predicate_key_count);
+    for (size_t i = 0; i < predicate_key_count; i++) 
+    {
+        predicate_keys[i] = i;
+    }
+
+    size_t elapsed_time_us[5];
+
+    std::vector<std::vector<bool>> output_buffers(predicate_key_count);
+    for (size_t i = 0; i < predicate_key_count; i++) 
+    {
+        output_buffers.emplace(output_buffers.begin() + i, std::vector<bool>(next_multiple(input_size, 8)));
+    }
+
+    for (int i = 0; i < 5; ++i)
+    {
+        _clock();
+        shared_scan_function(predicate_keys, compressed_data, input_size, output_buffers);
+        elapsed_time_us[i] = _clock().count();
+    }
+
+    print_numbers(name, elapsed_time_us);
+
+    for (size_t i = 0; i < predicate_key_count; i++)
+    {
+        check_scan_result(input, input_size, output_buffers[i], predicate_keys[i]);
+    }
+}
+
+void bench_shared_scan()
+{
+    int predicate_key_count = 8;
+
+    size_t compression = 9;
+    size_t buffer_target_size = data_size;
+    size_t input_size = buffer_target_size * 8 / compression;
+
+    std::vector<uint16_t> input(input_size);
+    for (size_t i = 0; i < input_size; i++)
+    {
+        input[i] = (uint16_t)(i % predicate_key_count);
+    }
+
+    std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
+    __m128i* compressed_ptr = (__m128i*) compressed.get();
+
+    std::cout.imbue(std::locale(""));
+    std::cout << "## shared scan benchmarks ##" << std::endl;
+    std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
+    std::cout << "predicate key count: " << predicate_key_count << std::endl;
+
+    do_shared_scan_benchmark("sse 128, sequential", input, input_size, compressed_ptr, shared_scan_128_sequential, predicate_key_count);
+    
+    int num_threads = omp_get_max_threads();
+    do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
 
     std::cout << "finished benchmark" << std::endl;
 }

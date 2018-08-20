@@ -20,7 +20,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src)
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 	# GCC Flags
 
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17 -msse3 -msse4 -msse4.1")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17 -msse3 -msse4 -msse4.1 -fopenmp")
 
 	if (AVX_FOUND)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
@@ -33,6 +33,8 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 
 elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
 	# MSVC Flags
+
+	target_compile_options(${PROJECT_NAME} PRIVATE /openmp)
 
 	# needed to use some VS profiler features
 	set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_FLAGS /Profile)
