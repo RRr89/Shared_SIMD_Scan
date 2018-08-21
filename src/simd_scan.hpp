@@ -66,3 +66,7 @@ int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<b
 void shared_scan_128_sequential(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
 void shared_scan_128_threaded(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
 void shared_scan_128_horizontal(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
+
+#ifdef __AVX__
+void shared_scan_256_horizontal(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
+#endif
