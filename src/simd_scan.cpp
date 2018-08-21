@@ -57,7 +57,8 @@ int scan_unvectorized(int predicate_key, __m128i* input, size_t input_size, std:
 
             overflow_bits = bits_needed - unread_bits;
         }
-        else {
+        else 
+        {
             overflow_bits = 0;
         }
     }
