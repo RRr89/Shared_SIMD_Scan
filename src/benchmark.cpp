@@ -200,7 +200,7 @@ void do_shared_scan_benchmark(
     std::vector<uint16_t> input,
     size_t input_size,
     __m128i* compressed_data,
-    std::function<void(std::vector<int>&, __m128i*, size_t, std::vector<std::vector<bool>>&)> shared_scan_function,
+    std::function<void(std::vector<int> const&, __m128i*, size_t, std::vector<std::vector<bool>>&)> shared_scan_function,
     int predicate_key_count)
 {
     std::vector<int> predicate_keys(predicate_key_count);

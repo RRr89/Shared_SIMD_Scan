@@ -3,7 +3,7 @@
 
 #include "simd_scan.hpp"
 
-void shared_scan_128_sequential(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
 {
     for (size_t i = 0; i < predicate_keys.size(); i++)
     {
@@ -11,7 +11,7 @@ void shared_scan_128_sequential(std::vector<int>& predicate_keys, __m128i* input
     }
 }
 
-void shared_scan_128_threaded(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
 {
     #pragma omp parallel for
     for (int i = 0; i < predicate_keys.size(); i++)
@@ -21,7 +21,7 @@ void shared_scan_128_threaded(std::vector<int>& predicate_keys, __m128i* input, 
 }
 
 // based on scan_unvectorized, just 4 times in parallel with SSE!
-void shared_scan_128_horizontal(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
 {
     size_t predicate_key_count = predicate_keys.size();
     uint32_t* in = reinterpret_cast<uint32_t*>(input);
@@ -100,7 +100,7 @@ void shared_scan_128_horizontal(std::vector<int>& predicate_keys, __m128i* input
     }
 }
 
-void shared_scan_128_vertical(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs) 
+void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
 {
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
@@ -207,7 +207,7 @@ void shared_scan_128_vertical(std::vector<int>& predicate_keys, __m128i* input, 
 
 #ifdef __AVX__
 // based on scan_unvectorized, just 8 times in parallel with AVX!
-void shared_scan_256_horizontal(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
 {
     size_t predicate_key_count = predicate_keys.size();
     uint32_t* in = reinterpret_cast<uint32_t*>(input);
@@ -290,7 +290,7 @@ void shared_scan_256_horizontal(std::vector<int>& predicate_keys, __m128i* input
     }
 }
 
-void shared_scan_256_vertical(std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_256_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
 {
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
