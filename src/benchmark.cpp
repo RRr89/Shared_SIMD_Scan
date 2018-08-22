@@ -260,9 +260,11 @@ void bench_shared_scan()
     do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
 
     do_shared_scan_benchmark("sse 128, horizontal", input, input_size, compressed_ptr, shared_scan_128_horizontal, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, vertical", input, input_size, compressed_ptr, shared_scan_128_vertical, predicate_key_count);
 
 #ifdef __AVX__
     do_shared_scan_benchmark("avx 256, horizontal", input, input_size, compressed_ptr, shared_scan_256_horizontal, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, vertical", input, input_size, compressed_ptr, shared_scan_256_vertical, predicate_key_count);
 #endif
 
     std::cout << "finished benchmark" << std::endl;
