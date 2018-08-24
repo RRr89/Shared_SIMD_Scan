@@ -10,8 +10,8 @@
 #include <functional>
 #include <omp.h>
 
-static const size_t data_size = 500 * 1 << 20;
-static const char* const data_size_str = "500 MB";
+static const size_t data_size = 1 << 30;
+static const char* const data_size_str = "1 GB";
 
 std::chrono::nanoseconds _clock()
 {
