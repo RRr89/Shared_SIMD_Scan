@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "simd_scan.hpp"
+#include "profiling.hpp"
 
 int scan_unvectorized(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output)
 {
@@ -124,44 +125,59 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<b
 
     __m128i predicate = _mm_set1_epi32(predicate_key);
 
+    PROFILE_SAMPLE(whole_loop);
+    PROFILE_SAMPLE(write_result);
+
     while (output_index < input_size)
     {
         {
+            PROFILE_BLOCK_START(whole_loop);
+
             size_t mask_index = 0;
             __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
             __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
             __m128i d = _mm_srli_epi32(c, 32 - compression);
             __m128i e = _mm_cmpeq_epi32(d, predicate);
 
+            PROFILE_BLOCK_START(write_result);
             for (size_t i = 0; i < 4; i++) 
             {
                 bool match = e.m128i_u32[i] == 0xFFFFFFFF;
                 output[output_index++] = match;
                 if (match) hits++;
             }
+            PROFILE_BLOCK_END(write_result);
 
             // load next
             total_processed_bytes = output_index * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+
+            PROFILE_BLOCK_END(whole_loop);
         }
 
         {
+            PROFILE_BLOCK_START(whole_loop);
+
             size_t mask_index = 1;
             __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
             __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
             __m128i d = _mm_srli_epi32(c, 32 - compression);
             __m128i e = _mm_cmpeq_epi32(d, predicate);
-            
+
+            PROFILE_BLOCK_START(write_result);
             for (size_t i = 0; i < 4; i++)
             {
                 bool match = e.m128i_u32[i] == 0xFFFFFFFF;
                 output[output_index++] = match;
                 if (match) hits++;
             }
+            PROFILE_BLOCK_END(write_result);
 
             // load next
             total_processed_bytes = output_index * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+
+            PROFILE_BLOCK_END(whole_loop);
         }
     }
 
