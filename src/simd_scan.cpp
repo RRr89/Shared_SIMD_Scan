@@ -168,6 +168,115 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<b
     return hits;
 }
 
+int scan_128_alternative(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output)
+{
+    int hits = 0;
+
+    size_t compression = BITS_NEEDED;
+
+    __m128i source = _mm_loadu_si128(input);
+
+    size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
+    size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
+
+    // shuffle masks
+    size_t input_offset[8];
+    for (size_t i = 0; i < 8; i++)
+    {
+        input_offset[i] = (compression * i) / 8;
+    }
+    size_t correction = input_offset[4];
+    for (size_t i = 4; i < 8; i++)
+    {
+        input_offset[i] -= correction;
+    }
+
+    __m128i shuffle_mask[2];
+    shuffle_mask[0] = _mm_setr_epi8(
+        input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
+        input_offset[1], input_offset[1] + 1, input_offset[1] + 2, input_offset[1] + 3,
+        input_offset[2], input_offset[2] + 1, input_offset[2] + 2, input_offset[2] + 3,
+        input_offset[3], input_offset[3] + 1, input_offset[3] + 2, input_offset[3] + 3);
+    shuffle_mask[1] = _mm_setr_epi8(
+        input_offset[4], input_offset[4] + 1, input_offset[4] + 2, input_offset[4] + 3,
+        input_offset[5], input_offset[5] + 1, input_offset[5] + 2, input_offset[5] + 3,
+        input_offset[6], input_offset[6] + 1, input_offset[6] + 2, input_offset[6] + 3,
+        input_offset[7], input_offset[7] + 1, input_offset[7] + 2, input_offset[7] + 3);
+
+    // clean masks
+    size_t padding[8];
+    for (size_t i = 0; i < 8; i++)
+    {
+        padding[i] = (compression * i) % 8;
+    }
+
+    __m128i clean_mask[2];
+    clean_mask[0] = _mm_setr_epi32(
+        ((1 << compression) - 1) << padding[0],
+        ((1 << compression) - 1) << padding[1],
+        ((1 << compression) - 1) << padding[2],
+        ((1 << compression) - 1) << padding[3]);
+    clean_mask[1] = _mm_setr_epi32(
+        ((1 << compression) - 1) << padding[4],
+        ((1 << compression) - 1) << padding[5],
+        ((1 << compression) - 1) << padding[6],
+        ((1 << compression) - 1) << padding[7]);
+
+    // registers for comparison predicate
+    __m128i predicate[2];
+    predicate[0] = _mm_setr_epi32(
+        predicate_key << padding[0],
+        predicate_key << padding[1],
+        predicate_key << padding[2],
+        predicate_key << padding[3]);
+    predicate[1] = _mm_setr_epi32(
+        predicate_key << padding[4],
+        predicate_key << padding[5],
+        predicate_key << padding[6],
+        predicate_key << padding[7]);
+
+    while (output_index < input_size)
+    {
+        {
+            size_t mask_index = 0;
+            __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
+            __m128i c = _mm_and_si128(b, clean_mask[mask_index]);
+            __m128i e = _mm_cmpeq_epi32(c, predicate[mask_index]);
+
+            for (size_t i = 0; i < 4; i++)
+            {
+                bool match = e.m128i_u32[i] == 0xFFFFFFFF;
+                output[output_index++] = match;
+                if (match) hits++;
+            }
+
+            // load next
+            total_processed_bytes = output_index * compression / 8;
+            source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+        }
+
+        {
+            size_t mask_index = 1;
+            __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
+            __m128i c = _mm_and_si128(b, clean_mask[mask_index]);
+            __m128i e = _mm_cmpeq_epi32(c, predicate[mask_index]);
+
+            for (size_t i = 0; i < 4; i++)
+            {
+                bool match = e.m128i_u32[i] == 0xFFFFFFFF;
+                output[output_index++] = match;
+                if (match) hits++;
+            }
+
+            // load next
+            total_processed_bytes = output_index * compression / 8;
+            source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+        }
+    }
+
+    return hits;
+}
+
 #ifdef __AVX__
 int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output)
 {

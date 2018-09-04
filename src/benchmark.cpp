@@ -185,6 +185,7 @@ void bench_scan()
 
     do_scan_benchmark("unvectorized", input, input_size, compressed_ptr, scan_unvectorized);
     do_scan_benchmark("sse 128", input, input_size, compressed_ptr, scan_128);
+    do_scan_benchmark("sse 128 (alt)", input, input_size, compressed_ptr, scan_128_alternative);
 
 #ifdef __AVX__
     do_scan_benchmark("avx 256", input, input_size, compressed_ptr, scan_256);
@@ -237,7 +238,7 @@ void bench_shared_scan()
     int predicate_key_count = 8;
 
     size_t compression = 9;
-    size_t buffer_target_size = data_size;
+    size_t buffer_target_size = data_size >> 3;
     size_t input_size = buffer_target_size * 8 / compression;
 
     std::vector<uint16_t> input(input_size);
