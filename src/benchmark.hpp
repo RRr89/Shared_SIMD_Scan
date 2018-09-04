@@ -11,3 +11,4 @@ void bench_shared_scan();
 // misc
 template<typename T> void bench_memory();
 void test_timer();
+void test_tsc();

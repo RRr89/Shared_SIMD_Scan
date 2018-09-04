@@ -1,5 +1,7 @@
 #include <chrono>
 #include <vector>
+#include <iostream>
+#include <intrin.h>
 
 #include "benchmark.hpp"
 #include "profiling.hpp"
@@ -47,3 +49,23 @@ void test_timer()
     }
 }
 
+void test_tsc()
+{
+    std::vector<uint64_t> diffs(1000);
+    uint64_t last;
+    uint32_t high, low;
+
+    for (size_t i = 0; i < 1000; i++)
+    {
+        //__asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high));
+        uint64_t cycles = __rdtsc();
+
+        diffs[i] = cycles - last;
+        last = cycles;
+    }
+
+    for (auto& d : diffs) 
+    {
+        std::cout << d << std::endl;
+    }
+}

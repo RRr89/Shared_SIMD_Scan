@@ -10,9 +10,9 @@ class ProfileSample
 {
 private:
     std::string id;
-    std::chrono::high_resolution_clock::time_point last;
+    uint64_t last;
     size_t running_count;
-    std::chrono::nanoseconds running_sum;
+    uint64_t running_sum;
 
 public:
     ProfileSample();
@@ -25,7 +25,7 @@ public:
 
     void end();
 
-    std::chrono::nanoseconds avg() const;
+    uint64_t avg() const;
 };
 
 std::chrono::nanoseconds get_sample(std::string id);

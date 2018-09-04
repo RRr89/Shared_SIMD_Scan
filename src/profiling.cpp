@@ -1,4 +1,5 @@
 #include <iostream>
+#include <intrin.h>
 
 #include "profiling.hpp"
 
@@ -24,29 +25,29 @@ ProfileSample::ProfileSample(std::string id)
 
 ProfileSample::~ProfileSample()
 {
-    std::cout << "[profiler] " << id << ": " << avg().count() << " (avg over " << running_count << " samples)" << std::endl;
+    std::cout << "[profiler] " << id << ": " << avg() << " (avg over " << running_count << " samples)" << std::endl;
     __samples[id] = *this;
 }
 
 void ProfileSample::start()
 {
-    last = std::chrono::high_resolution_clock::now();
+    last = __rdtsc();
 }
 
 void ProfileSample::end()
 {
-    auto now = std::chrono::high_resolution_clock::now();
+    auto now = __rdtsc();
     auto diff = now - last;
     running_sum += diff;
     running_count++;
 }
 
-std::chrono::nanoseconds ProfileSample::avg() const
+uint64_t ProfileSample::avg() const
 {
     return running_sum / running_count;
 }
 
 std::chrono::nanoseconds get_sample(std::string id)
 {
-    return __samples[id].avg();
+    return std::chrono::nanoseconds();
 }
