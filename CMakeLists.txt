@@ -6,7 +6,7 @@ project(shared_simd_scan)
 
 option(ENABLE_AVX "Enable AVX-aware code" ON)
 option(ENABLE_AVX2 "Enable AVX2-aware code (AVX must be enabled)" ON)
-option(ENABLE_PROFILING "Enable code sections for profiling" ON)
+option(ENABLE_PROFILING "Enable code sections for profiling" OFF)
 
 # doesn't work on Windows!
 include(checkVectorizationSupport.cmake)
@@ -20,6 +20,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src)
 
 if (ENABLE_PROFILING)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_PROFILING=1)
+else()
+	target_compile_definitions(${PROJECT_NAME} PRIVATE ENABLE_PROFILING=0)
 endif ()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
