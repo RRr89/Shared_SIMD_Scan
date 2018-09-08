@@ -149,7 +149,6 @@ void bench_scan()
 
     do_scan_benchmark("unvectorized", input, input_size, compressed_ptr, scan_unvectorized);
     do_scan_benchmark("sse 128", input, input_size, compressed_ptr, scan_128);
-    do_scan_benchmark("sse 128 (alt)", input, input_size, compressed_ptr, scan_128_alternative);
 
 #ifdef __AVX__
     do_scan_benchmark("avx 256", input, input_size, compressed_ptr, scan_256);
