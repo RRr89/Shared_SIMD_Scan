@@ -12,6 +12,13 @@ static const char nibble2str[16][5] = {
     "1100", "1101", "1110", "1111",
 };
 
+void dump_byte(uint8_t byte, std::ostream& os)
+{
+    os << nibble2str[((byte >> 4) & 0x0F)];
+    os << nibble2str[byte & 0x0F];
+    os << std::endl;
+}
+
 // dumps 64bit blocks, MSB on the left
 void dump_memory(const void* mem, size_t bytes, std::ostream& os) 
 {
@@ -44,4 +51,13 @@ void dump_memory(const void* mem, size_t bytes, std::ostream& os)
 int next_multiple(int number, int multiple)
 {
     return ((number + multiple - 1) / multiple) * multiple;
+}
+
+bool get_bit(std::vector<uint8_t> const& vector, size_t absolute_index)
+{
+    size_t vector_index = absolute_index / 8;
+    uint8_t element = vector[vector_index];
+    size_t bit_index = absolute_index % 8;
+    bool bit = (element & (1 << bit_index)) > 0;
+    return bit;
 }

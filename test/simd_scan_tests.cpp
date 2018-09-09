@@ -75,6 +75,20 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
             REQUIRE(output[i] == (input_numbers[i] == predicate_key));
         }
     }
+
+    SECTION("SIMD scan v2 (SSE)")
+    {
+        std::vector<uint8_t> output(next_multiple(input_numbers.size(), 8) / 8);
+        int predicate_key = 3;
+        int hits = scan_128_v2(predicate_key, compressed_ptr, input_numbers.size(), output);
+
+        REQUIRE(hits == 4);
+
+        for (size_t i = 0; i < input_numbers.size(); i++)
+        {
+            REQUIRE(get_bit(output, i) == (input_numbers[i] == predicate_key));
+        }
+    }
 }
 
 TEST_CASE("Shared SIMD Scan", "[shared-simd-scan]")

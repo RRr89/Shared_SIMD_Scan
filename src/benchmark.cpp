@@ -128,6 +128,40 @@ void do_scan_benchmark(
     check_scan_result(input, input_size, output_buffer, predicate_key);
 }
 
+bool check_scan_result_v2(std::vector<uint16_t> input, size_t size, std::vector<uint8_t> const& output, int predicate_key)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        if (get_bit(output, i) != (input[i] == predicate_key))
+        {
+            std::cout << "first mismatch at index " << i << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+void do_scan_benchmark_v2(
+    std::string name,
+    std::vector<uint16_t> input,
+    size_t input_size,
+    __m128i* compressed_data,
+    std::function<int(int, __m128i*, size_t, std::vector<uint8_t>&)> scan_function)
+{
+    int predicate_key = 3;
+    size_t elapsed_time_us[5];
+    std::vector<uint8_t> output_buffer(next_multiple(input_size, 8) / 8);
+
+    for (int i = 0; i < 5; ++i)
+    {
+        _clock();
+        scan_function(predicate_key, compressed_data, input_size, output_buffer);
+        elapsed_time_us[i] = _clock().count();
+    }
+    print_numbers(name, elapsed_time_us);
+    check_scan_result_v2(input, input_size, output_buffer, predicate_key);
+}
+
 void bench_scan() 
 {
     size_t compression = 9;
@@ -149,9 +183,11 @@ void bench_scan()
 
     do_scan_benchmark("unvectorized", input, input_size, compressed_ptr, scan_unvectorized);
     do_scan_benchmark("sse 128", input, input_size, compressed_ptr, scan_128);
+    do_scan_benchmark_v2("sse 128 v2", input, input_size, compressed_ptr, scan_128_v2);
 
 #ifdef __AVX__
     do_scan_benchmark("avx 256", input, input_size, compressed_ptr, scan_256);
+    do_scan_benchmark_v2("avx 256 v2", input, input_size, compressed_ptr, scan_256_v2);
 #else
     std::cout << "avx 256 is not supported" << std::endl;
 #endif
