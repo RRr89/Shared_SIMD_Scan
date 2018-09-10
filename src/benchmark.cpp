@@ -182,6 +182,7 @@ void bench_scan()
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
     do_scan_benchmark("unvectorized", input, input_size, compressed_ptr, scan_unvectorized);
+    do_scan_benchmark_v2("unvectorized v2", input, input_size, compressed_ptr, scan_unvectorized_v2);
     do_scan_benchmark("sse 128", input, input_size, compressed_ptr, scan_128);
     do_scan_benchmark_v2("sse 128 v2", input, input_size, compressed_ptr, scan_128_v2);
 
