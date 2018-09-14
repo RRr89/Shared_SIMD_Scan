@@ -4,7 +4,7 @@
 #include "simd_scan.hpp"
 #include "util.hpp"
 
-void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     for (size_t i = 0; i < predicate_keys.size(); i++)
     {
@@ -12,7 +12,7 @@ void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i*
     }
 }
 
-void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     #pragma omp parallel for
     for (int i = 0; i < predicate_keys.size(); i++)
@@ -22,7 +22,7 @@ void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* i
 }
 
 // based on scan_unvectorized, just 4 times in parallel with SSE!
-void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t predicate_key_count = predicate_keys.size();
     uint32_t* in = reinterpret_cast<uint32_t*>(input);
@@ -32,12 +32,17 @@ void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i*
 
     __m128i mask = _mm_set1_epi32((1 << compression) - 1);
 
+    // process in groups of (maximum) 4 predicates
     for (size_t key_id = 0; key_id < predicate_key_count; key_id += 4)
     {
         __m128i current = _mm_setzero_si128();
         size_t overflow_bits = 0;
 
-        size_t oi = 0;
+        size_t oi = 0; // number of result bits written
+
+        __m128i output = _mm_setzero_si128(); // holds 32 output bits for each compartment
+        size_t out_bits_used = 0; // can maybe be optimized away
+        __m128i output_match_mask = _mm_set1_epi32(1); // used for masking out one bit in the comparison result register
 
         __m128i predicate_key = _mm_setr_epi32(
             predicate_keys[std::min(key_id, predicate_key_count - 1)], 
@@ -54,16 +59,37 @@ void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i*
             size_t unread_bits = (8 * sizeof(uint32_t)) - overflow_bits;
             while (unread_bits >= compression)
             {
+                // decompress and match against predicate
                 __m128i decompressed_element = _mm_and_si128(current, mask);
                 __m128i match = _mm_cmpeq_epi32(decompressed_element, predicate_key);
 
-                for (size_t out_offset = 0; out_offset < 4 && key_id + out_offset < predicate_key_count; out_offset++)
+                // mask out one bit from the comparison result and OR it to the output registers
+                __m128i masked_match = _mm_and_si128(match, output_match_mask);
+                output = _mm_or_si128(output, masked_match);
+                output_match_mask = _mm_slli_epi32(output_match_mask, 1);
+                out_bits_used += 1;
+
+
+                // if the output register is filled, write results to the output vector
+                if (out_bits_used == 32)
                 {
-                    outputs[key_id + out_offset][oi] = match.m128i_u32[out_offset] > 0;
+                    // TODO make this more efficient
+                    for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            outputs[key_id + key_offset][oi + j] = output.m128i_u8[4 * key_offset + j];
+                        }
+                    }
+                    oi += 4;
+
+                    // reset these registers
+                    output = _mm_setzero_si128();
+                    output_match_mask = _mm_set1_epi32(1);
+                    out_bits_used = 0;
                 }
 
-                oi++;
-                if (oi == input_size)
+                if (oi >= input_size)
                 {
                     goto nextBatch;
                 }
@@ -82,12 +108,31 @@ void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i*
                 __m128i decompressed_element = _mm_and_si128(current, mask);
                 __m128i match = _mm_cmpeq_epi32(decompressed_element, predicate_key);
 
-                for (size_t out_offset = 0; out_offset < 4 && key_id + out_offset < predicate_key_count; out_offset++)
+                // mask out one bit from the comparison result and OR it to the output registers
+                __m128i masked_match = _mm_and_si128(match, output_match_mask);
+                output = _mm_or_si128(output, masked_match);
+                output_match_mask = _mm_slli_epi32(output_match_mask, 1);
+                out_bits_used += 1;
+
+                // if the output register is filled, write results to the output vector
+                if (out_bits_used == 32)
                 {
-                    outputs[key_id + out_offset][oi] = match.m128i_u32[out_offset] > 0;
+                    // TODO make this more efficient
+                    for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            outputs[key_id + key_offset][oi + j] = output.m128i_u8[4 * key_offset + j];
+                        }
+                    }
+                    oi += 4;
+
+                    // reset these registers
+                    output = _mm_setzero_si128();
+                    output_match_mask = _mm_set1_epi32(1);
+                    out_bits_used = 0;
                 }
 
-                oi++;
 
                 overflow_bits = compression - unread_bits;
             }
@@ -97,11 +142,23 @@ void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i*
             }
         }
 
+        if (out_bits_used != 0) 
+        {
+            // TODO make this more efficient
+            for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    outputs[key_id + key_offset][oi + j] = output.m128i_u8[4 * key_offset + j];
+                }
+            }
+        }
+
         nextBatch:;
     }
 }
 
-void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
@@ -167,10 +224,9 @@ void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* i
                 __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
                 __m128i e = _mm_cmpeq_epi32(d, predicate);
 
-                for (size_t i = 0; i < 4; i++)
-                {
-                    outputs[key_id][output_index + i] = e.m128i_u32[i] > 0;
-                }
+                uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
+                
+                outputs[key_id][output_index / 8] = matches;
             }
 
             output_index += 4;
@@ -191,10 +247,10 @@ void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* i
                 __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
                 __m128i e = _mm_cmpeq_epi32(d, predicate);
 
-                for (size_t i = 0; i < 4; i++)
-                {
-                    outputs[key_id][output_index + i] = e.m128i_u32[i] > 0;
-                }
+                uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
+
+                // TODO maybe this can be done more efficiently
+                outputs[key_id][output_index / 8] = outputs[key_id][output_index / 8] | (matches << 4);
             }
 
             output_index += 4;
@@ -208,7 +264,7 @@ void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* i
 
 #ifdef __AVX__
 // based on scan_unvectorized, just 8 times in parallel with AVX!
-void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t predicate_key_count = predicate_keys.size();
     uint32_t* in = reinterpret_cast<uint32_t*>(input);
@@ -218,12 +274,17 @@ void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i*
 
     __m256i mask = _mm256_set1_epi32((1 << compression) - 1);
 
+    // process in groups of (maximum) 8 predicates
     for (size_t key_id = 0; key_id < predicate_key_count; key_id += 8)
     {
         __m256i current = _mm256_setzero_si256();
         size_t overflow_bits = 0;
 
-        size_t oi = 0;
+        size_t oi = 0; // number of result bits written
+
+        __m256i output = _mm256_setzero_si256(); // holds 32 output bits for each compartment
+        size_t out_bits_used = 0; // can maybe be optimized away
+        __m256i output_match_mask = _mm256_set1_epi32(1); // used for masking out one bit in the comparison result register
 
         __m256i predicate_key = _mm256_setr_epi32(
             predicate_keys[std::min(key_id, predicate_key_count - 1)],
@@ -244,16 +305,42 @@ void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i*
             size_t unread_bits = (8 * sizeof(uint32_t)) - overflow_bits;
             while (unread_bits >= compression)
             {
+                // decompress and match against predicate
                 __m256i decompressed_element = _mm256_and_si256(current, mask);
                 __m256i match = _mm256_cmpeq_epi32(decompressed_element, predicate_key);
 
-                for (size_t out_offset = 0; out_offset < 8 && key_id + out_offset < predicate_key_count; out_offset++)
+                // mask out one bit from the comparison result and OR it to the output registers
+                __m256i masked_match = _mm256_and_si256(match, output_match_mask);
+                output = _mm256_or_si256(output, masked_match);
+                output_match_mask = _mm256_slli_epi32(output_match_mask, 1);
+                out_bits_used += 1;
+
+                // if the output register is filled, write results to the output vector
+                if (out_bits_used == 32)
                 {
-                    outputs[key_id + out_offset][oi] = match.m256i_u32[out_offset] > 0;
+                    for (size_t out_offset = 0; out_offset < 8 && key_id + out_offset < predicate_key_count; out_offset++)
+                    {
+                        outputs[key_id + out_offset][oi] = match.m256i_u32[out_offset] > 0;
+                    }
+
+                    // TODO make this more efficient
+                    for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            outputs[key_id + key_offset][oi + j] = output.m256i_u8[4 * key_offset + j];
+                        }
+                    }
+                    oi += 4;
+
+                    // reset these registers
+                    output = _mm256_setzero_si256();
+                    output_match_mask = _mm256_set1_epi32(1);
+                    out_bits_used = 0;
                 }
 
-                oi++;
-                if (oi == input_size)
+                
+                if (oi >= input_size)
                 {
                     goto nextBatch;
                 }
@@ -272,12 +359,35 @@ void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i*
                 __m256i decompressed_element = _mm256_and_si256(current, mask);
                 __m256i match = _mm256_cmpeq_epi32(decompressed_element, predicate_key);
 
-                for (size_t out_offset = 0; out_offset < 8 && key_id + out_offset < predicate_key_count; out_offset++)
-                {
-                    outputs[key_id + out_offset][oi] = match.m256i_u32[out_offset] > 0;
-                }
+                // mask out one bit from the comparison result and OR it to the output registers
+                __m256i masked_match = _mm256_and_si256(match, output_match_mask);
+                output = _mm256_or_si256(output, masked_match);
+                output_match_mask = _mm256_slli_epi32(output_match_mask, 1);
+                out_bits_used += 1;
 
-                oi++;
+                // if the output register is filled, write results to the output vector
+                if (out_bits_used == 32)
+                {
+                    for (size_t out_offset = 0; out_offset < 8 && key_id + out_offset < predicate_key_count; out_offset++)
+                    {
+                        outputs[key_id + out_offset][oi] = match.m256i_u32[out_offset] > 0;
+                    }
+
+                    // TODO make this more efficient
+                    for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            outputs[key_id + key_offset][oi + j] = output.m256i_u8[4 * key_offset + j];
+                        }
+                    }
+                    oi += 4;
+
+                    // reset these registers
+                    output = _mm256_setzero_si256();
+                    output_match_mask = _mm256_set1_epi32(1);
+                    out_bits_used = 0;
+                }
 
                 overflow_bits = compression - unread_bits;
             }
@@ -287,11 +397,23 @@ void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i*
             }
         }
 
-    nextBatch:;
+        if (out_bits_used != 0)
+        {
+            // TODO make this more efficient
+            for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    outputs[key_id + key_offset][oi + j] = output.m256i_u8[4 * key_offset + j];
+                }
+            }
+        }
+
+        nextBatch:;
     }
 }
 
-void shared_scan_256_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs)
+void shared_scan_256_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
@@ -348,10 +470,8 @@ void shared_scan_256_vertical(std::vector<int> const& predicate_keys, __m128i* i
             __m256i predicate = _mm256_set1_epi32(predicate_keys[key_id]);
             __m256i e = _mm256_cmpeq_epi32(d, predicate);
 
-            for (size_t i = 0; i < 8; i++)
-            {
-                outputs[key_id][output_index + i] = e.m256i_u32[i] > 0;
-            }
+            int matches = _mm256_movemask_ps(_mm256_castsi256_ps(e));
+            outputs[key_id][output_index / 8] = matches;
         }
 
         output_index += 8;

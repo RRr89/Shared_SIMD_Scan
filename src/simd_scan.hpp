@@ -52,27 +52,23 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output);
 /*
 * SIMD scan 
 */
-int scan_unvectorized(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output);
-int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output);
-
-int scan_unvectorized_v2(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
-int scan_128_v2(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
+int scan_unvectorized(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
+int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
 
 #ifdef __AVX__
-int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<bool>& output);
-int scan_256_v2(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
+int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
 #endif
 
 /*
 * Shared SIMD scan
 */
 
-void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
-void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
-void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
-void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
+void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
+void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
+void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
+void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 
 #ifdef __AVX__
-void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
-void shared_scan_256_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<bool>>& outputs);
+void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
+void shared_scan_256_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 #endif
