@@ -223,12 +223,12 @@ void bench_shared_scan()
     int num_threads = omp_get_max_threads();
     do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
 
-    do_shared_scan_benchmark("sse 128, horizontal", input, input_size, compressed_ptr, shared_scan_128_horizontal, predicate_key_count);
-    do_shared_scan_benchmark("sse 128, vertical", input, input_size, compressed_ptr, shared_scan_128_vertical, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, standard", input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, parallel", input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
 
 #ifdef __AVX__
-    do_shared_scan_benchmark("avx 256, horizontal", input, input_size, compressed_ptr, shared_scan_256_horizontal, predicate_key_count);
-    do_shared_scan_benchmark("avx 256, vertical", input, input_size, compressed_ptr, shared_scan_256_vertical, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, standard", input, input_size, compressed_ptr, shared_scan_256_standard, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, parallel", input, input_size, compressed_ptr, shared_scan_256_parallel, predicate_key_count);
 #endif
 
     std::cout << "finished benchmark" << std::endl;

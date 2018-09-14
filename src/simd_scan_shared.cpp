@@ -21,8 +21,112 @@ void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* i
     }
 }
 
+void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
+{
+    size_t compression = BITS_NEEDED;
+    size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
+
+    __m128i source = _mm_loadu_si128(input);
+
+    size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
+    size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
+
+    // shuffle masks
+    size_t input_offset[8];
+    for (size_t i = 0; i < 8; i++)
+    {
+        input_offset[i] = (compression * i) / 8;
+    }
+    size_t correction = input_offset[4];
+    for (size_t i = 4; i < 8; i++)
+    {
+        input_offset[i] -= correction;
+    }
+
+    __m128i shuffle_mask[2];
+    shuffle_mask[0] = _mm_setr_epi8(
+        input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
+        input_offset[1], input_offset[1] + 1, input_offset[1] + 2, input_offset[1] + 3,
+        input_offset[2], input_offset[2] + 1, input_offset[2] + 2, input_offset[2] + 3,
+        input_offset[3], input_offset[3] + 1, input_offset[3] + 2, input_offset[3] + 3);
+    shuffle_mask[1] = _mm_setr_epi8(
+        input_offset[4], input_offset[4] + 1, input_offset[4] + 2, input_offset[4] + 3,
+        input_offset[5], input_offset[5] + 1, input_offset[5] + 2, input_offset[5] + 3,
+        input_offset[6], input_offset[6] + 1, input_offset[6] + 2, input_offset[6] + 3,
+        input_offset[7], input_offset[7] + 1, input_offset[7] + 2, input_offset[7] + 3);
+
+    // shift masks
+    size_t padding[8];
+    for (size_t i = 0; i < 8; i++)
+    {
+        padding[i] = (compression * i) % 8;
+    }
+
+    __m128i shift_mask[2];
+    shift_mask[0] = _mm_setr_epi32(
+        1 << (free_bits - padding[0]),
+        1 << (free_bits - padding[1]),
+        1 << (free_bits - padding[2]),
+        1 << (free_bits - padding[3]));
+    shift_mask[1] = _mm_setr_epi32(
+        1 << (free_bits - padding[4]),
+        1 << (free_bits - padding[5]),
+        1 << (free_bits - padding[6]),
+        1 << (free_bits - padding[7]));
+
+    while (output_index < input_size)
+    {
+        {
+            size_t mask_index = 0;
+            __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
+            __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
+            __m128i d = _mm_srli_epi32(c, 32 - compression);
+
+            for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
+            {
+                __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
+                __m128i e = _mm_cmpeq_epi32(d, predicate);
+
+                uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
+
+                outputs[key_id][output_index / 8] = matches;
+            }
+
+            output_index += 4;
+
+            // load next
+            total_processed_bytes = output_index * compression / 8;
+            source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+        }
+
+        {
+            size_t mask_index = 1;
+            __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
+            __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
+            __m128i d = _mm_srli_epi32(c, 32 - compression);
+
+            for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
+            {
+                __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
+                __m128i e = _mm_cmpeq_epi32(d, predicate);
+
+                uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
+
+                // TODO maybe this can be done more efficiently
+                outputs[key_id][output_index / 8] = outputs[key_id][output_index / 8] | (matches << 4);
+            }
+
+            output_index += 4;
+
+            // load next
+            total_processed_bytes = output_index * compression / 8;
+            source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+        }
+    }
+}
+
 // based on scan_unvectorized, just 4 times in parallel with SSE!
-void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
+void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t predicate_key_count = predicate_keys.size();
     uint32_t* in = reinterpret_cast<uint32_t*>(input);
@@ -158,54 +262,48 @@ void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i*
     }
 }
 
-void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
+#ifdef __AVX__
+void shared_scan_256_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
 
-    __m128i source = _mm_loadu_si128(input);
+    //avxi_t source = _mm256_loadu_si256(input);
+    __m256i source = _mm256_loadu2_m128i(input, input);
 
     size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
     size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
 
-    // shuffle masks
+    // shuffle mask
     size_t input_offset[8];
     for (size_t i = 0; i < 8; i++)
     {
         input_offset[i] = (compression * i) / 8;
     }
-    size_t correction = input_offset[4];
-    for (size_t i = 4; i < 8; i++)
-    {
-        input_offset[i] -= correction;
-    }
 
-    __m128i shuffle_mask[2];
-    shuffle_mask[0] = _mm_setr_epi8(
+    __m256i shuffle_mask = _mm256_setr_epi8(
         input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
         input_offset[1], input_offset[1] + 1, input_offset[1] + 2, input_offset[1] + 3,
         input_offset[2], input_offset[2] + 1, input_offset[2] + 2, input_offset[2] + 3,
-        input_offset[3], input_offset[3] + 1, input_offset[3] + 2, input_offset[3] + 3);
-    shuffle_mask[1] = _mm_setr_epi8(
+        input_offset[3], input_offset[3] + 1, input_offset[3] + 2, input_offset[3] + 3,
+
         input_offset[4], input_offset[4] + 1, input_offset[4] + 2, input_offset[4] + 3,
         input_offset[5], input_offset[5] + 1, input_offset[5] + 2, input_offset[5] + 3,
         input_offset[6], input_offset[6] + 1, input_offset[6] + 2, input_offset[6] + 3,
         input_offset[7], input_offset[7] + 1, input_offset[7] + 2, input_offset[7] + 3);
 
-    // shift masks
+    // shift mask
     size_t padding[8];
     for (size_t i = 0; i < 8; i++)
     {
         padding[i] = (compression * i) % 8;
     }
 
-    __m128i shift_mask[2];
-    shift_mask[0] = _mm_setr_epi32(
+    __m256i shift_mask = _mm256_setr_epi32(
         1 << (free_bits - padding[0]),
         1 << (free_bits - padding[1]),
         1 << (free_bits - padding[2]),
-        1 << (free_bits - padding[3]));
-    shift_mask[1] = _mm_setr_epi32(
+        1 << (free_bits - padding[3]),
         1 << (free_bits - padding[4]),
         1 << (free_bits - padding[5]),
         1 << (free_bits - padding[6]),
@@ -213,58 +311,30 @@ void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* i
 
     while (output_index < input_size)
     {
+        __m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
+        __m256i c = _mm256_mullo_epi32(b, shift_mask);
+        __m256i d = _mm256_srli_epi32(c, 32 - compression);
+
+        for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
         {
-            size_t mask_index = 0;
-            __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
-            __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
-            __m128i d = _mm_srli_epi32(c, 32 - compression);
+            __m256i predicate = _mm256_set1_epi32(predicate_keys[key_id]);
+            __m256i e = _mm256_cmpeq_epi32(d, predicate);
 
-            for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
-            {
-                __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
-                __m128i e = _mm_cmpeq_epi32(d, predicate);
-
-                uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
-                
-                outputs[key_id][output_index / 8] = matches;
-            }
-
-            output_index += 4;
-
-            // load next
-            total_processed_bytes = output_index * compression / 8;
-            source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+            int matches = _mm256_movemask_ps(_mm256_castsi256_ps(e));
+            outputs[key_id][output_index / 8] = matches;
         }
 
-        {
-            size_t mask_index = 1;
-            __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
-            __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
-            __m128i d = _mm_srli_epi32(c, 32 - compression);
+        output_index += 8;
 
-            for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
-            {
-                __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
-                __m128i e = _mm_cmpeq_epi32(d, predicate);
-
-                uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
-
-                // TODO maybe this can be done more efficiently
-                outputs[key_id][output_index / 8] = outputs[key_id][output_index / 8] | (matches << 4);
-            }
-
-            output_index += 4;
-
-            // load next
-            total_processed_bytes = output_index * compression / 8;
-            source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
-        }
+        // load next
+        total_processed_bytes = output_index * compression / 8;
+        __m128i* next = (__m128i*)&((uint8_t*)input)[total_processed_bytes];
+        source = _mm256_loadu2_m128i(next, next);
     }
 }
 
-#ifdef __AVX__
 // based on scan_unvectorized, just 8 times in parallel with AVX!
-void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
+void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t predicate_key_count = predicate_keys.size();
     uint32_t* in = reinterpret_cast<uint32_t*>(input);
@@ -339,7 +409,7 @@ void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i*
                     out_bits_used = 0;
                 }
 
-                
+
                 if (oi >= input_size)
                 {
                     goto nextBatch;
@@ -409,77 +479,7 @@ void shared_scan_256_horizontal(std::vector<int> const& predicate_keys, __m128i*
             }
         }
 
-        nextBatch:;
-    }
-}
-
-void shared_scan_256_vertical(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
-{
-    size_t compression = BITS_NEEDED;
-    size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
-
-    //avxi_t source = _mm256_loadu_si256(input);
-    __m256i source = _mm256_loadu2_m128i(input, input);
-
-    size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
-    size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
-
-    // shuffle mask
-    size_t input_offset[8];
-    for (size_t i = 0; i < 8; i++)
-    {
-        input_offset[i] = (compression * i) / 8;
-    }
-
-    __m256i shuffle_mask = _mm256_setr_epi8(
-        input_offset[0], input_offset[0] + 1, input_offset[0] + 2, input_offset[0] + 3,
-        input_offset[1], input_offset[1] + 1, input_offset[1] + 2, input_offset[1] + 3,
-        input_offset[2], input_offset[2] + 1, input_offset[2] + 2, input_offset[2] + 3,
-        input_offset[3], input_offset[3] + 1, input_offset[3] + 2, input_offset[3] + 3,
-
-        input_offset[4], input_offset[4] + 1, input_offset[4] + 2, input_offset[4] + 3,
-        input_offset[5], input_offset[5] + 1, input_offset[5] + 2, input_offset[5] + 3,
-        input_offset[6], input_offset[6] + 1, input_offset[6] + 2, input_offset[6] + 3,
-        input_offset[7], input_offset[7] + 1, input_offset[7] + 2, input_offset[7] + 3);
-
-    // shift mask
-    size_t padding[8];
-    for (size_t i = 0; i < 8; i++)
-    {
-        padding[i] = (compression * i) % 8;
-    }
-
-    __m256i shift_mask = _mm256_setr_epi32(
-        1 << (free_bits - padding[0]),
-        1 << (free_bits - padding[1]),
-        1 << (free_bits - padding[2]),
-        1 << (free_bits - padding[3]),
-        1 << (free_bits - padding[4]),
-        1 << (free_bits - padding[5]),
-        1 << (free_bits - padding[6]),
-        1 << (free_bits - padding[7]));
-
-    while (output_index < input_size)
-    {
-        __m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
-        __m256i c = _mm256_mullo_epi32(b, shift_mask);
-        __m256i d = _mm256_srli_epi32(c, 32 - compression);
-
-        for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
-        {
-            __m256i predicate = _mm256_set1_epi32(predicate_keys[key_id]);
-            __m256i e = _mm256_cmpeq_epi32(d, predicate);
-
-            int matches = _mm256_movemask_ps(_mm256_castsi256_ps(e));
-            outputs[key_id][output_index / 8] = matches;
-        }
-
-        output_index += 8;
-
-        // load next
-        total_processed_bytes = output_index * compression / 8;
-        __m128i* next = (__m128i*)&((uint8_t*)input)[total_processed_bytes];
-        source = _mm256_loadu2_m128i(next, next);
+    nextBatch:;
     }
 }
 #endif
