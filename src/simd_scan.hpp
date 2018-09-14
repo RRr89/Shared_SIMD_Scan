@@ -69,6 +69,7 @@ void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* i
 void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 
 #ifdef __AVX__
+void shared_scan_256_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_256_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 #endif

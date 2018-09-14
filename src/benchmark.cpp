@@ -227,6 +227,7 @@ void bench_shared_scan()
     do_shared_scan_benchmark("sse 128, parallel", input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
 
 #ifdef __AVX__
+    do_shared_scan_benchmark("avx 256, sequential", input, input_size, compressed_ptr, shared_scan_256_sequential, predicate_key_count);
     do_shared_scan_benchmark("avx 256, standard", input, input_size, compressed_ptr, shared_scan_256_standard, predicate_key_count);
     do_shared_scan_benchmark("avx 256, parallel", input, input_size, compressed_ptr, shared_scan_256_parallel, predicate_key_count);
 #endif
