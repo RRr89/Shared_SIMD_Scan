@@ -177,13 +177,9 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
                 // if the output register is filled, write results to the output vector
                 if (out_bits_used == 32)
                 {
-                    // TODO make this more efficient
                     for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            outputs[key_id + key_offset][oi + j] = output.m128i_u8[4 * key_offset + j];
-                        }
+                        memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
                     }
                     oi += 4;
 
@@ -221,13 +217,9 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
                 // if the output register is filled, write results to the output vector
                 if (out_bits_used == 32)
                 {
-                    // TODO make this more efficient
                     for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            outputs[key_id + key_offset][oi + j] = output.m128i_u8[4 * key_offset + j];
-                        }
+                        memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
                     }
                     oi += 4;
 
@@ -248,13 +240,9 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
         if (out_bits_used != 0) 
         {
-            // TODO make this more efficient
             for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
             {
-                for (int j = 0; j < 4; j++)
-                {
-                    outputs[key_id + key_offset][oi + j] = output.m128i_u8[4 * key_offset + j];
-                }
+                memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
             }
         }
 
@@ -388,18 +376,9 @@ void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* i
                 // if the output register is filled, write results to the output vector
                 if (out_bits_used == 32)
                 {
-                    for (size_t out_offset = 0; out_offset < 8 && key_id + out_offset < predicate_key_count; out_offset++)
-                    {
-                        outputs[key_id + out_offset][oi] = match.m256i_u32[out_offset] > 0;
-                    }
-
-                    // TODO make this more efficient
                     for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            outputs[key_id + key_offset][oi + j] = output.m256i_u8[4 * key_offset + j];
-                        }
+                        memcpy(outputs[key_id + key_offset].data() + oi, &output.m256i_u32[key_offset], sizeof(uint32_t));
                     }
                     oi += 4;
 
@@ -438,18 +417,9 @@ void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* i
                 // if the output register is filled, write results to the output vector
                 if (out_bits_used == 32)
                 {
-                    for (size_t out_offset = 0; out_offset < 8 && key_id + out_offset < predicate_key_count; out_offset++)
-                    {
-                        outputs[key_id + out_offset][oi] = match.m256i_u32[out_offset] > 0;
-                    }
-
-                    // TODO make this more efficient
                     for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            outputs[key_id + key_offset][oi + j] = output.m256i_u8[4 * key_offset + j];
-                        }
+                        memcpy(outputs[key_id + key_offset].data() + oi, &output.m256i_u32[key_offset], sizeof(uint32_t));
                     }
                     oi += 4;
 
@@ -469,13 +439,9 @@ void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
         if (out_bits_used != 0)
         {
-            // TODO make this more efficient
             for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
             {
-                for (int j = 0; j < 4; j++)
-                {
-                    outputs[key_id + key_offset][oi + j] = output.m256i_u8[4 * key_offset + j];
-                }
+                memcpy(outputs[key_id + key_offset].data() + oi, &output.m256i_u32[key_offset], sizeof(uint32_t));
             }
         }
 
