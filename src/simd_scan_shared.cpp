@@ -23,13 +23,13 @@ void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* i
 
 void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
+    size_t predicate_key_count = predicate_keys.size();
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
 
     __m128i source = _mm_loadu_si128(input);
 
-    size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
-    size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
+    size_t output_index = 0; // current write index of the output array
 
     // shuffle masks
     size_t input_offset[8];
@@ -74,7 +74,9 @@ void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* i
         1 << (free_bits - padding[6]),
         1 << (free_bits - padding[7]));
 
-    while (output_index < input_size)
+    auto output_bytes = std::make_unique<uint8_t[]>(predicate_key_count);
+
+    while (8 * output_index < input_size)
     {
         {
             size_t mask_index = 0;
@@ -82,20 +84,18 @@ void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* i
             __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
             __m128i d = _mm_srli_epi32(c, 32 - compression);
 
-            for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
+            for (size_t key_id = 0; key_id < predicate_key_count; key_id++)
             {
                 __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
                 __m128i e = _mm_cmpeq_epi32(d, predicate);
 
                 uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
 
-                outputs[key_id][output_index / 8] = matches;
+                output_bytes[key_id] = matches;
             }
 
-            output_index += 4;
-
             // load next
-            total_processed_bytes = output_index * compression / 8;
+            size_t total_processed_bytes = (8 * output_index + 4) * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
         }
 
@@ -105,23 +105,22 @@ void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* i
             __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
             __m128i d = _mm_srli_epi32(c, 32 - compression);
 
-            for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
+            for (size_t key_id = 0; key_id < predicate_key_count; key_id++)
             {
                 __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
                 __m128i e = _mm_cmpeq_epi32(d, predicate);
 
                 uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
 
-                // TODO maybe this can be done more efficiently
-                outputs[key_id][output_index / 8] = outputs[key_id][output_index / 8] | (matches << 4);
+                outputs[key_id][output_index] = output_bytes[key_id] | (matches << 4);
             }
 
-            output_index += 4;
-
             // load next
-            total_processed_bytes = output_index * compression / 8;
+            size_t total_processed_bytes = (8 * output_index + 8) * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
         }
+
+        output_index += 1;
     }
 }
 
@@ -261,6 +260,7 @@ void shared_scan_256_sequential(std::vector<int> const& predicate_keys, __m128i*
 
 void shared_scan_256_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
+    size_t predicate_key_count = predicate_keys.size();
     size_t compression = BITS_NEEDED;
     size_t free_bits = 32 - compression; // most significant bits in result values that must be 0
 
@@ -305,25 +305,24 @@ void shared_scan_256_standard(std::vector<int> const& predicate_keys, __m128i* i
         1 << (free_bits - padding[6]),
         1 << (free_bits - padding[7]));
 
-    while (output_index < input_size)
+    while (8 * output_index < input_size)
     {
         __m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
         __m256i c = _mm256_mullo_epi32(b, shift_mask);
         __m256i d = _mm256_srli_epi32(c, 32 - compression);
 
-        for (size_t key_id = 0; key_id < predicate_keys.size(); key_id++)
+        for (size_t key_id = 0; key_id < predicate_key_count; key_id++)
         {
             __m256i predicate = _mm256_set1_epi32(predicate_keys[key_id]);
             __m256i e = _mm256_cmpeq_epi32(d, predicate);
 
             int matches = _mm256_movemask_ps(_mm256_castsi256_ps(e));
-            outputs[key_id][output_index / 8] = matches;
+            outputs[key_id][output_index] = matches;
         }
 
-        output_index += 8;
-
         // load next
-        total_processed_bytes = output_index * compression / 8;
+        output_index += 1;
+        total_processed_bytes = (8 * output_index) * compression / 8;
         __m128i* next = (__m128i*)&((uint8_t*)input)[total_processed_bytes];
         source = _mm256_loadu2_m128i(next, next);
     }
