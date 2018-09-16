@@ -64,6 +64,7 @@ std::unique_ptr<uint64_t[]> compress_9bit_input(std::vector<uint16_t>& input)
     // turns out it makes no difference in performance though.
     //auto buffer = std::unique_ptr<uint64_t[]>((uint64_t*) new __m128i[array_size / 2]);
     //auto buffer = std::unique_ptr<uint64_t[]>((uint64_t*) new __m256i[array_size / 4]);
+    //auto buffer = std::unique_ptr<uint64_t[]>((uint64_t*) _mm_malloc(array_size * sizeof(uint64_t), 256));
 
     int remaining_buffer_size = element_size;
     int idx_ = 0;

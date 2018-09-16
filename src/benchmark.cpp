@@ -175,11 +175,8 @@ void do_shared_scan_benchmark(
 
     size_t elapsed_time_us[5];
 
-    std::vector<std::vector<uint8_t>> output_buffers(predicate_key_count);
-    for (size_t i = 0; i < predicate_key_count; i++) 
-    {
-        output_buffers.emplace(output_buffers.begin() + i, std::vector<uint8_t>(next_multiple(input_size, 8) / 8));
-    }
+    size_t output_buffer_size = next_multiple(input_size / 8 + 1, 8);
+    std::vector<std::vector<uint8_t>> output_buffers(predicate_key_count, std::vector<uint8_t>(output_buffer_size));
 
     for (int i = 0; i < 5; ++i)
     {
