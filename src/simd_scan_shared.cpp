@@ -58,7 +58,13 @@ void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i*
 
                 for (size_t out_offset = 0; out_offset < 4 && key_id + out_offset < predicate_key_count; out_offset++)
                 {
-                    outputs[key_id + out_offset][oi] = match.m128i_u32[out_offset] > 0;
+                    outputs[key_id + out_offset][oi] = 
+#ifdef _MSC_VER
+                        match.m128i_u32[out_offset]
+#else
+                        match[out_offset]
+#endif
+                    > 0;
                 }
 
                 oi++;
@@ -83,7 +89,13 @@ void shared_scan_128_horizontal(std::vector<int> const& predicate_keys, __m128i*
 
                 for (size_t out_offset = 0; out_offset < 4 && key_id + out_offset < predicate_key_count; out_offset++)
                 {
-                    outputs[key_id + out_offset][oi] = match.m128i_u32[out_offset] > 0;
+                    outputs[key_id + out_offset][oi] = 
+#ifdef _MSC_VER
+                        match.m128i_u32[out_offset]
+#else
+                        match[out_offset]
+#endif
+                    > 0;
                 }
 
                 oi++;
@@ -168,7 +180,13 @@ void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* i
 
                 for (size_t i = 0; i < 4; i++)
                 {
-                    outputs[key_id][output_index + i] = e.m128i_u32[i] > 0;
+                    outputs[key_id][output_index + i] =
+#ifdef _MSC_VER
+                        e.m128i_u32[i]
+#else
+                        e[i]
+#endif
+                    > 0;
                 }
             }
 
@@ -192,7 +210,13 @@ void shared_scan_128_vertical(std::vector<int> const& predicate_keys, __m128i* i
 
                 for (size_t i = 0; i < 4; i++)
                 {
-                    outputs[key_id][output_index + i] = e.m128i_u32[i] > 0;
+                    outputs[key_id][output_index + i] =
+#ifdef _MSC_VER
+                        e.m128i_u32[i]
+#else
+                        e[i]
+#endif
+                    > 0;
                 }
             }
 

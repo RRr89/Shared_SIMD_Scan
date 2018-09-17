@@ -135,7 +135,11 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<b
 
             for (size_t i = 0; i < 4; i++) 
             {
+#ifdef _MSC_VER
                 bool match = e.m128i_u32[i] == 0xFFFFFFFF;
+#else
+                bool match = e[i] == 0xFFFFFFFF;
+#endif
                 output[output_index++] = match;
                 if (match) hits++;
             }
@@ -154,7 +158,11 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<b
             
             for (size_t i = 0; i < 4; i++)
             {
+#ifdef _MSC_VER
                 bool match = e.m128i_u32[i] == 0xFFFFFFFF;
+#else
+                bool match = e[i] == 0xFFFFFFFF;
+#endif
                 output[output_index++] = match;
                 if (match) hits++;
             }
