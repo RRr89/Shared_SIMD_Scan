@@ -1,6 +1,7 @@
 #include "benchmark.hpp"
 #include "simd_scan.hpp"
 #include "util.hpp"
+#include "profiling.hpp"
 
 #include <chrono>
 #include <vector>
@@ -9,18 +10,6 @@
 #include <memory>
 #include <functional>
 #include <omp.h>
-
-static const size_t data_size = 1 << 30;
-static const char* const data_size_str = "1 GB";
-
-std::chrono::nanoseconds _clock()
-{
-    static std::chrono::high_resolution_clock::time_point last;
-    auto now = std::chrono::high_resolution_clock::now();
-    auto elapsed = now - last;
-    last = now;
-    return elapsed;
-}
 
 void print_numbers(std::string benchmark_name, const size_t elapsed_time_us[5])
 {
@@ -86,12 +75,12 @@ void bench_decompression()
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
     do_decompression_benchmark("unvectorized", input, input_size, compressed_ptr, decompress_unvectorized);
-    do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed_ptr, decompress_128_sweep);
-    do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed_ptr, decompress_128_nosweep);
-    do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed_ptr, decompress_128_9bit);
-    do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed_ptr, decompress_128);
+    //do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed_ptr, decompress_128_sweep);
+    //do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed_ptr, decompress_128_nosweep);
+    //do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed_ptr, decompress_128_9bit);
+    //do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed_ptr, decompress_128);
     do_decompression_benchmark("sse 128 (optimized masks + unrolled loop)", input, input_size, compressed_ptr, decompress_128_unrolled);
-    do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed_ptr, decompress_128_aligned);
+    //do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed_ptr, decompress_128_aligned);
 
 #ifdef __AVX__
     do_decompression_benchmark("avx 256", input, input_size, compressed_ptr, decompress_256);
@@ -105,36 +94,11 @@ void bench_decompression()
     std::cout << "finished benchmark" << std::endl;
 }
 
-template<typename T>
-void bench_memory()
-{
-    size_t size = data_size / sizeof(T);
-    auto a = std::vector<T>(size);
-    for (T& x : a) x = rand() & 0xFF;
-
-    auto b = std::vector<T>(size);
-
-    _clock();
-
-    for (size_t i = 0; i < size; i++)
-    {
-        b[i] = a[i];
-    }
-
-    std::cout.imbue(std::locale(""));
-    std::cout << "copy memory (" << sizeof(T) << " byte(s) at a time, " << data_size_str << "): " << (_clock().count()/1000000) << " ms" << std::endl;
-}
-
-template void bench_memory<uint8_t>();
-template void bench_memory<uint16_t>();
-template void bench_memory<uint32_t>();
-template void bench_memory<uint64_t>();
-
-bool check_scan_result(std::vector<uint16_t> input, size_t size, std::vector<bool> const& output, int predicate_key)
+bool check_scan_result(std::vector<uint16_t> input, size_t size, std::vector<uint8_t> const& output, int predicate_key)
 {
     for (size_t i = 0; i < size; i++)
     {
-        if (output[i] != (input[i] == predicate_key))
+        if (get_bit(output, i) != (input[i] == predicate_key))
         {
             std::cout << "first mismatch at index " << i << std::endl;
             return false;
@@ -148,11 +112,11 @@ void do_scan_benchmark(
     std::vector<uint16_t> input,
     size_t input_size,
     __m128i* compressed_data,
-    std::function<int(int, __m128i*, size_t, std::vector<bool>&)> scan_function)
+    std::function<int(int, __m128i*, size_t, std::vector<uint8_t>&)> scan_function)
 {
     int predicate_key = 3;
     size_t elapsed_time_us[5];
-    std::vector<bool> output_buffer(next_multiple(input_size, 8));
+    std::vector<uint8_t> output_buffer(next_multiple(input_size, 8) / 8);
 
     for (int i = 0; i < 5; ++i)
     {
@@ -200,7 +164,7 @@ void do_shared_scan_benchmark(
     std::vector<uint16_t> input,
     size_t input_size,
     __m128i* compressed_data,
-    std::function<void(std::vector<int> const&, __m128i*, size_t, std::vector<std::vector<bool>>&)> shared_scan_function,
+    std::function<void(std::vector<int> const&, __m128i*, size_t, std::vector<std::vector<uint8_t>>&)> shared_scan_function,
     int predicate_key_count)
 {
     std::vector<int> predicate_keys(predicate_key_count);
@@ -211,11 +175,8 @@ void do_shared_scan_benchmark(
 
     size_t elapsed_time_us[5];
 
-    std::vector<std::vector<bool>> output_buffers(predicate_key_count);
-    for (size_t i = 0; i < predicate_key_count; i++) 
-    {
-        output_buffers.emplace(output_buffers.begin() + i, std::vector<bool>(next_multiple(input_size, 8)));
-    }
+    size_t output_buffer_size = next_multiple(input_size / 8 + 1, 8);
+    std::vector<std::vector<uint8_t>> output_buffers(predicate_key_count, std::vector<uint8_t>(output_buffer_size));
 
     for (int i = 0; i < 5; ++i)
     {
@@ -237,7 +198,7 @@ void bench_shared_scan()
     int predicate_key_count = 8;
 
     size_t compression = 9;
-    size_t buffer_target_size = data_size;
+    size_t buffer_target_size = data_size >> 3;
     size_t input_size = buffer_target_size * 8 / compression;
 
     std::vector<uint16_t> input(input_size);
@@ -259,12 +220,13 @@ void bench_shared_scan()
     int num_threads = omp_get_max_threads();
     do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
 
-    do_shared_scan_benchmark("sse 128, horizontal", input, input_size, compressed_ptr, shared_scan_128_horizontal, predicate_key_count);
-    do_shared_scan_benchmark("sse 128, vertical", input, input_size, compressed_ptr, shared_scan_128_vertical, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, standard", input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, parallel", input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
 
 #ifdef __AVX__
-    do_shared_scan_benchmark("avx 256, horizontal", input, input_size, compressed_ptr, shared_scan_256_horizontal, predicate_key_count);
-    do_shared_scan_benchmark("avx 256, vertical", input, input_size, compressed_ptr, shared_scan_256_vertical, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, sequential", input, input_size, compressed_ptr, shared_scan_256_sequential, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, standard", input, input_size, compressed_ptr, shared_scan_256_standard, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, parallel", input, input_size, compressed_ptr, shared_scan_256_parallel, predicate_key_count);
 #endif
 
     std::cout << "finished benchmark" << std::endl;

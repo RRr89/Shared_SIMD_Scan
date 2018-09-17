@@ -50,7 +50,7 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
 
     SECTION("Unvectorized scan") 
     {
-        std::vector<bool> output(input_numbers.size());
+        std::vector<uint8_t> output(input_numbers.size() / 8 + 1);
         int predicate_key = 3;
         int hits = scan_unvectorized(predicate_key, compressed_ptr, input_numbers.size(), output);
 
@@ -58,13 +58,13 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
 
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
-            REQUIRE(output[i] == (input_numbers[i] == predicate_key));
+            REQUIRE(get_bit(output, i) == (input_numbers[i] == predicate_key));
         }
     }
 
-    SECTION("SIMD scan (SSE)") 
+    SECTION("SIMD scan (SSE)")
     {
-        std::vector<bool> output(next_multiple(input_numbers.size(), 8));
+        std::vector<uint8_t> output(next_multiple(input_numbers.size(), 8) / 8);
         int predicate_key = 3;
         int hits = scan_128(predicate_key, compressed_ptr, input_numbers.size(), output);
 
@@ -72,7 +72,7 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
 
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
-            REQUIRE(output[i] == (input_numbers[i] == predicate_key));
+            REQUIRE(get_bit(output, i) == (input_numbers[i] == predicate_key));
         }
     }
 }
@@ -87,11 +87,8 @@ TEST_CASE("Shared SIMD Scan", "[shared-simd-scan]")
 
     std::vector<int> predicate_keys{ 1, 2, 3 };
 
-    std::vector<std::vector<bool>> outputs(predicate_keys.size());
-    for (size_t i = 0; i < predicate_keys.size(); i++) 
-    {
-        outputs.emplace(outputs.begin() + i, std::vector<bool>(next_multiple(input_numbers.size(), 8)));
-    }
+    size_t output_buffer_size = next_multiple(input_numbers.size() / 8 + 1, 8);
+    std::vector<std::vector<uint8_t>> outputs(predicate_keys.size(), std::vector<uint8_t>(output_buffer_size));
 
     shared_scan_128_sequential(predicate_keys, compressed_ptr, input_numbers.size(), outputs);
 
@@ -99,7 +96,7 @@ TEST_CASE("Shared SIMD Scan", "[shared-simd-scan]")
     {
         for (size_t i = 0; i < input_numbers.size(); i++)
         {
-            REQUIRE(outputs[key_id][i] == (input_numbers[i] == predicate_keys[key_id]));
+            REQUIRE(get_bit(outputs[key_id], i) == (input_numbers[i] == predicate_keys[key_id]));
         }
     }
 }

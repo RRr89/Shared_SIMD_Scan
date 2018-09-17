@@ -1,5 +1,6 @@
 #include "simd_scan.hpp"
 #include "util.hpp"
+#include "profiling.hpp"
 
 void decompress_unvectorized(__m128i* input, size_t input_size, int* output)
 {
@@ -358,36 +359,51 @@ void decompress_128_unrolled(__m128i* input, size_t input_size, int* output)
         1 << (free_bits - padding[6]),
         1 << (free_bits - padding[7]));
 
+    PROFILE_SAMPLE(whole_loop);
+    PROFILE_SAMPLE(write_result);
+
     while (output_index < input_size)
     {
         {
+            PROFILE_BLOCK_START(whole_loop);
+
             size_t mask_index = 0;
             __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
             __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
             __m128i d = _mm_srli_epi32(c, 32 - compression);
 
+            PROFILE_BLOCK_START(write_result);
             _mm_storeu_si128((__m128i*)&output[output_index], d);
+            PROFILE_BLOCK_END(write_result);
 
             output_index += 4;
 
             // load next
             total_processed_bytes = output_index * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+
+            PROFILE_BLOCK_END(whole_loop);
         }
 
         {
+            PROFILE_BLOCK_START(whole_loop);
+
             size_t mask_index = 1;
             __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
             __m128i c = _mm_mullo_epi32(b, shift_mask[mask_index]);
             __m128i d = _mm_srli_epi32(c, 32 - compression);
 
+            PROFILE_BLOCK_START(write_result);
             _mm_storeu_si128((__m128i*)&output[output_index], d);
+            PROFILE_BLOCK_END(write_result);
 
             output_index += 4;
 
             // load next
             total_processed_bytes = output_index * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+
+            PROFILE_BLOCK_END(whole_loop);
         }
     }
 }

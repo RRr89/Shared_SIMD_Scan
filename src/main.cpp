@@ -6,6 +6,7 @@
 #include "simd_scan.hpp"
 #include "util.hpp"
 #include "benchmark.hpp"
+#include "profiling.hpp"
 
 
 int main(int argc, char** argv)
@@ -15,10 +16,13 @@ int main(int argc, char** argv)
     bench_memory<uint32_t>();
     bench_memory<uint64_t>();
     std::cout << "------" << std::endl;*/
-    bench_decompression();
+    
+    /*bench_decompression();
     std::cout << "------" << std::endl;
+    
     bench_scan();
-    std::cout << "------" << std::endl;
+    std::cout << "------" << std::endl;*/
+
     bench_shared_scan();
 
     std::cin.get();
