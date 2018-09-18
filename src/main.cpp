@@ -22,7 +22,8 @@ int main(int argc, char** argv)
     bench_scan();
     std::cout << "------" << std::endl;*/
 
-    bench_shared_scan();
+    for (int i = 0; i < 5; i++)
+        bench_shared_scan(1 << i, false);
 
     std::cin.get();
     return 0;
