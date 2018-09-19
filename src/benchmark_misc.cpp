@@ -21,14 +21,34 @@ void bench_memory()
         b[i] = a[i];
     }
 
-    std::cout.imbue(std::locale(""));
-    std::cout << "copy memory (" << sizeof(T) << " byte(s) at a time, " << data_size_str << "): " << (_clock().count() / 1000000) << " ms" << std::endl;
+    auto time = _clock();
+
+    std::cout << "copy memory (" << sizeof(T) << " byte(s) at a time, " << data_size_str << "): " << (time.count() / 1000000) << " ms";
+    std::cout << ", throughput: " << (2 * (double)(data_size >> 20) / 1000 / ((double)time.count() / 1000000000)) << " GB/s" << std::endl;
 }
 
 template void bench_memory<uint8_t>();
 template void bench_memory<uint16_t>();
 template void bench_memory<uint32_t>();
 template void bench_memory<uint64_t>();
+
+void bench_memcpy()
+{
+    size_t size = data_size;
+    auto a = std::vector<uint8_t>(size);
+    for (uint8_t& x : a) x = rand() & 0xFF;
+
+    auto b = std::vector<uint8_t>(size);
+
+    _clock();
+
+    memcpy(b.data(), a.data(), size);
+
+    auto time = _clock();
+
+    std::cout << "copy memory (memcpy, " << data_size_str << "): " << (time.count() / 1000000) << " ms";
+    std::cout << ", throughput: " << (2 * (double)(data_size >> 20) / 1000 / ((double)time.count() / 1000000000)) << " GB/s" << std::endl;
+}
 
 void test_timer()
 {

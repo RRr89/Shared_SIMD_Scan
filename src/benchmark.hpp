@@ -10,5 +10,6 @@ void bench_scan();
 void bench_shared_scan(int predicate_key_count = 8, bool relative_data_size = false);
 
 // misc
-template<typename T> void bench_memory();
+template<typename T> void bench_memory(); 
+void bench_memcpy();
 void test_timer();
