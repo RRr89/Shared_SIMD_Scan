@@ -58,6 +58,7 @@ int scan_128_unrolled(int predicate_key, __m128i* input, size_t input_size, std:
 
 #ifdef __AVX__
 int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
+int scan_256_unrolled(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
 #endif
 
 /*

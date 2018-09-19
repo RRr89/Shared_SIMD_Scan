@@ -165,6 +165,7 @@ void bench_scan()
 
 #ifdef __AVX__
     do_scan_benchmark("avx 256", input, input_size, compressed_ptr, scan_256);
+    do_scan_benchmark("avx 256 (unrolled)", input, input_size, compressed_ptr, scan_256_unrolled);
 #else
     std::cout << "avx 256 is not supported" << std::endl;
 #endif

@@ -173,8 +173,7 @@ int scan_128_unrolled(int predicate_key, __m128i* input, size_t input_size, std:
 
     __m128i source = _mm_loadu_si128(input);
 
-    uint32_t* output2 = reinterpret_cast<uint32_t*>(output.data());
-
+    uint32_t* output_array = reinterpret_cast<uint32_t*>(output.data());
     size_t output_index = 0; // current write index of the output array
 
     __m128i shuffle_mask[2];
@@ -202,7 +201,7 @@ int scan_128_unrolled(int predicate_key, __m128i* input, size_t input_size, std:
         __scan_128_step(out, 24, shuffle_mask[0], clean_mask[0], predicate[0], output_index, compression, input, source);
         __scan_128_step(out, 28, shuffle_mask[1], clean_mask[1], predicate[1], output_index, compression, input, source);
 
-        output2[output_index] = out;
+        output_array[output_index] = out;
         output_index += 1;
         hits += POPCNT(out);
     }
@@ -243,6 +242,57 @@ int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<u
         size_t total_processed_bytes = (8 * output_index) * compression / 8;
         __m128i* next = (__m128i*)&((uint8_t*)input)[total_processed_bytes];
         source = _mm256_loadu2_m128i(next, next);
+    }
+
+    return hits;
+}
+
+inline void __scan_256_step(uint32_t& out, size_t const& offset, __m256i const& shuffle_mask,
+    __m256i const& clean_mask, __m256i const& predicate, size_t const& output_index, size_t const& compression,
+    __m128i* input, __m256i& source)
+{
+    __m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
+    __m256i c = _mm256_and_si256(b, clean_mask);
+    __m256i e = _mm256_cmpeq_epi32(c, predicate);
+
+    out |= _mm256_movemask_ps(_mm256_castsi256_ps(e)) << offset;
+
+    // load next
+    size_t total_processed_bytes = (32 * output_index + offset + 8) * compression / 8;
+    __m128i* next = (__m128i*)&((uint8_t*)input)[total_processed_bytes];
+    source = _mm256_loadu2_m128i(next, next);
+}
+
+int scan_256_unrolled(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output)
+{
+    int hits = 0;
+
+    size_t compression = BITS_NEEDED;
+
+    //avxi_t source = _mm256_loadu_si256(input);
+    __m256i source = _mm256_loadu2_m128i(input, input);
+
+    uint32_t* output_array = reinterpret_cast<uint32_t*>(output.data());
+    size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
+
+    __m256i shuffle_mask = generate_shuffle_mask_256(compression);
+
+    __m256i clean_mask = generate_clean_mask_256(compression);
+
+    __m256i predicate = generate_predicate_mask_256(compression, predicate_key);
+
+    while (32 * output_index < input_size)
+    {
+        uint32_t out = 0;
+
+        __scan_256_step(out,  0, shuffle_mask, clean_mask, predicate, output_index, compression, input, source);
+        __scan_256_step(out,  8, shuffle_mask, clean_mask, predicate, output_index, compression, input, source);
+        __scan_256_step(out, 16, shuffle_mask, clean_mask, predicate, output_index, compression, input, source);
+        __scan_256_step(out, 24, shuffle_mask, clean_mask, predicate, output_index, compression, input, source);
+
+        output_array[output_index] = out;
+        output_index += 1;
+        hits += POPCNT(out);
     }
 
     return hits;
