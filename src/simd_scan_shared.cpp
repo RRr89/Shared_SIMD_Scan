@@ -13,6 +13,14 @@ void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i*
     }
 }
 
+void shared_scan_128_sequential_unrolled(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
+{
+    for (size_t i = 0; i < predicate_keys.size(); i++)
+    {
+        scan_128_unrolled(predicate_keys[i], input, input_size, outputs[i]);
+    }
+}
+
 void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     #pragma omp parallel for
@@ -82,6 +90,69 @@ void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* i
             // load next
             size_t total_processed_bytes = (8 * output_index + 8) * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+        }
+
+        output_index += 1;
+    }
+}
+
+inline void __shared_scan_128_step(std::unique_ptr<uint32_t[]>& output, size_t const& offset, __m128i const& shuffle_mask,
+    __m128i const& shift_mask, size_t const& predicate_key_count, std::vector<int> const& predicate_keys, 
+    size_t const& output_index, size_t const& compression, __m128i* input, __m128i& source)
+{
+    size_t mask_index = 0;
+    __m128i b = _mm_shuffle_epi8(source, shuffle_mask);
+    __m128i c = _mm_mullo_epi32(b, shift_mask);
+    __m128i d = _mm_srli_epi32(c, 32 - compression);
+
+    for (size_t key_id = 0; key_id < predicate_key_count; key_id++)
+    {
+        __m128i predicate = _mm_set1_epi32(predicate_keys[key_id]);
+        __m128i e = _mm_cmpeq_epi32(d, predicate);
+
+        output[key_id] |= _mm_movemask_ps(_mm_castsi128_ps(e)) << offset;
+    }
+
+    // load next
+    size_t total_processed_bytes = (32 * output_index + offset + 4) * compression / 8;
+    source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+}
+
+void shared_scan_128_standard_unrolled(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
+{
+    size_t predicate_key_count = predicate_keys.size();
+    size_t compression = BITS_NEEDED;
+
+    __m128i source = _mm_loadu_si128(input);
+
+    size_t output_index = 0; // current write index of the output array
+
+    __m128i shuffle_mask[2];
+    generate_shuffle_mask_128(compression, shuffle_mask);
+
+    __m128i shift_mask[2];
+    generate_shift_masks_128(compression, shift_mask);
+
+    // buffer for partial outputs
+    auto output = std::make_unique<uint32_t[]>(predicate_key_count);
+
+    while (32 * output_index < input_size)
+    {
+        __shared_scan_128_step(output,  0, shuffle_mask[0], shift_mask[0], predicate_key_count, predicate_keys, output_index, compression, input, source);
+        __shared_scan_128_step(output,  4, shuffle_mask[1], shift_mask[1], predicate_key_count, predicate_keys, output_index, compression, input, source);
+
+        __shared_scan_128_step(output,  8, shuffle_mask[0], shift_mask[0], predicate_key_count, predicate_keys, output_index, compression, input, source);
+        __shared_scan_128_step(output, 12, shuffle_mask[1], shift_mask[1], predicate_key_count, predicate_keys, output_index, compression, input, source);
+
+        __shared_scan_128_step(output, 16, shuffle_mask[0], shift_mask[0], predicate_key_count, predicate_keys, output_index, compression, input, source);
+        __shared_scan_128_step(output, 20, shuffle_mask[1], shift_mask[1], predicate_key_count, predicate_keys, output_index, compression, input, source);
+
+        __shared_scan_128_step(output, 24, shuffle_mask[0], shift_mask[0], predicate_key_count, predicate_keys, output_index, compression, input, source);
+        __shared_scan_128_step(output, 28, shuffle_mask[1], shift_mask[1], predicate_key_count, predicate_keys, output_index, compression, input, source);
+
+        for (int key_id = 0; key_id < predicate_key_count; key_id++)
+        {
+            reinterpret_cast<uint32_t*>(outputs[key_id].data())[output_index] = output[key_id];
         }
 
         output_index += 1;

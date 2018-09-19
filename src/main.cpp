@@ -18,13 +18,15 @@ int main(int argc, char** argv)
     std::cout << "------" << std::endl;*/
     
     /*bench_decompression();
-    std::cout << "------" << std::endl;
-    
+    std::cout << "------" << std::endl;*/
+    /*
     bench_scan();
     std::cout << "------" << std::endl;*/
+/*
+    for (int i = 1; i <= 16; i++)
+        bench_shared_scan(i, false);*/
 
-    for (int i = 0; i < 5; i++)
-        bench_shared_scan(1 << i, false);
+    bench_shared_scan();
 
     std::cin.get();
     return 0;

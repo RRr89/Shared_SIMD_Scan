@@ -234,11 +234,13 @@ void bench_shared_scan(int predicate_key_count, bool relative_data_size)
     std::cout << "predicate key count: " << predicate_key_count << std::endl;
 
     do_shared_scan_benchmark("sse 128, sequential", input, input_size, compressed_ptr, shared_scan_128_sequential, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, sequential (unrolled)", input, input_size, compressed_ptr, shared_scan_128_sequential_unrolled, predicate_key_count);
     
     int num_threads = omp_get_max_threads();
     do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
 
     do_shared_scan_benchmark("sse 128, standard", input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, standard (unrolled)", input, input_size, compressed_ptr, shared_scan_128_standard_unrolled, predicate_key_count);
     do_shared_scan_benchmark("sse 128, parallel", input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
 
 #ifdef __AVX__
