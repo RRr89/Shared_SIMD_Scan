@@ -54,6 +54,7 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output);
 */
 int scan_unvectorized(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
 int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
+int scan_128_unrolled(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
 
 #ifdef __AVX__
 int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output);

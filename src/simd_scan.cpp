@@ -150,6 +150,66 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<u
     return hits;
 }
 
+inline void __scan_128_step(uint32_t& out, size_t const& offset, __m128i const& shuffle_mask, 
+    __m128i const& clean_mask, __m128i const& predicate, size_t const& output_index, size_t const& compression, 
+    __m128i* input, __m128i& source)
+{
+    __m128i b = _mm_shuffle_epi8(source, shuffle_mask);
+    __m128i c = _mm_and_si128(b, clean_mask);
+    __m128i e = _mm_cmpeq_epi32(c, predicate);
+
+    out |= (_mm_movemask_ps(_mm_castsi128_ps(e)) << offset);
+
+    // load next
+    size_t total_processed_bytes = (32 * output_index + offset + 4) * compression / 8;
+    source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
+}
+
+int scan_128_unrolled(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output)
+{
+    int hits = 0;
+
+    size_t compression = BITS_NEEDED;
+
+    __m128i source = _mm_loadu_si128(input);
+
+    uint32_t* output2 = reinterpret_cast<uint32_t*>(output.data());
+
+    size_t output_index = 0; // current write index of the output array
+
+    __m128i shuffle_mask[2];
+    generate_shuffle_mask_128(compression, shuffle_mask);
+
+    __m128i clean_mask[2];
+    generate_clean_masks_128(compression, clean_mask);
+
+    __m128i predicate[2];
+    generate_predicate_masks_128(compression, predicate_key, predicate);
+
+    while (32 * output_index < input_size)
+    {
+        uint32_t out = 0;
+
+        __scan_128_step(out,  0, shuffle_mask[0], clean_mask[0], predicate[0], output_index, compression, input, source);
+        __scan_128_step(out,  4, shuffle_mask[1], clean_mask[1], predicate[1], output_index, compression, input, source);
+
+        __scan_128_step(out,  8, shuffle_mask[0], clean_mask[0], predicate[0], output_index, compression, input, source);
+        __scan_128_step(out, 12, shuffle_mask[1], clean_mask[1], predicate[1], output_index, compression, input, source);
+
+        __scan_128_step(out, 16, shuffle_mask[0], clean_mask[0], predicate[0], output_index, compression, input, source);
+        __scan_128_step(out, 20, shuffle_mask[1], clean_mask[1], predicate[1], output_index, compression, input, source);
+
+        __scan_128_step(out, 24, shuffle_mask[0], clean_mask[0], predicate[0], output_index, compression, input, source);
+        __scan_128_step(out, 28, shuffle_mask[1], clean_mask[1], predicate[1], output_index, compression, input, source);
+
+        output2[output_index] = out;
+        output_index += 1;
+        hits += POPCNT(out);
+    }
+
+    return hits;
+}
+
 #ifdef __AVX__
 int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<uint8_t>& output)
 {
