@@ -101,7 +101,7 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<u
 
     __m128i source = _mm_loadu_si128(input);
 
-    size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
+    size_t output_index = 0; // current write index of the output array
 
     __m128i shuffle_mask[2];
     generate_shuffle_mask_128(compression, shuffle_mask);
@@ -112,7 +112,7 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<u
     __m128i predicate[2];
     generate_predicate_masks_128(compression, predicate_key, predicate);
 
-    while (output_index < input_size)
+    while (8 * output_index < input_size)
     {
         uint8_t out = 0;
 
@@ -125,8 +125,7 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<u
             out |= _mm_movemask_ps(_mm_castsi128_ps(e));
 
             // load next
-            output_index += 4;
-            size_t total_processed_bytes = output_index * compression / 8;
+            size_t total_processed_bytes = (8 * output_index + 4) * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
         }
 
@@ -139,12 +138,12 @@ int scan_128(int predicate_key, __m128i* input, size_t input_size, std::vector<u
             out |= (_mm_movemask_ps(_mm_castsi128_ps(e)) << 4);
 
             // load next
-            output_index += 4;
-            size_t total_processed_bytes = output_index * compression / 8;
+            size_t total_processed_bytes = (8 * output_index + 8) * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
         }
 
-        output[(output_index / 8) - 1] = out;
+        output[output_index] = out;
+        output_index += 1;
         hits += POPCNT(out);
     }
 
@@ -169,7 +168,7 @@ int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<u
 
     __m256i predicate = generate_predicate_mask_256(compression, predicate_key);
 
-    while (output_index < input_size)
+    while (8 * output_index < input_size)
     {
         __m256i b = _mm256_shuffle_epi8(source, shuffle_mask);
         __m256i c = _mm256_and_si256(b, clean_mask);
@@ -177,11 +176,11 @@ int scan_256(int predicate_key, __m128i* input, size_t input_size, std::vector<u
 
         int matches = _mm256_movemask_ps(_mm256_castsi256_ps(e));
         hits += POPCNT(matches);
-        output[output_index / 8] = matches;
+        output[output_index] = matches;
 
         // load next
-        output_index += 8;
-        size_t total_processed_bytes = output_index * compression / 8;
+        output_index += 1;
+        size_t total_processed_bytes = (8 * output_index) * compression / 8;
         __m128i* next = (__m128i*)&((uint8_t*)input)[total_processed_bytes];
         source = _mm256_loadu2_m128i(next, next);
     }

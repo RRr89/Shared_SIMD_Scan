@@ -429,7 +429,7 @@ void decompress_256_avx2(__m128i* input, size_t input_size, int* output)
 
     __m256i source = _mm256_loadu2_m128i(input, input);
 
-    size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
+    size_t output_index = 0; // current write index of the output array
 
     __m256i shuffle_mask = generate_shuffle_mask_256(compression);
 
