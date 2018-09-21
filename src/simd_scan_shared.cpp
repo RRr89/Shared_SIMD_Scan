@@ -208,7 +208,6 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
                 output_match_mask = _mm_slli_epi32(output_match_mask, 1);
                 out_bits_used += 1;
 
-
                 // if the output register is filled, write results to the output vector
                 if (out_bits_used == 32)
                 {
@@ -217,8 +216,7 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
                     for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        outputs[key_id + key_offset][oi] = result_reg[key_offset];
-                        //memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
+                        memcpy(outputs[key_id + key_offset].data() + oi, &result_reg[key_offset], sizeof(uint32_t));
                     }
                     oi += 4;
 
@@ -261,8 +259,7 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
                     for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        outputs[key_id + key_offset][oi] = result_reg[key_offset];
-                        //memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
+                        memcpy(outputs[key_id + key_offset].data() + oi, &result_reg[key_offset], sizeof(uint32_t));
                     }
                     oi += 4;
 
@@ -288,8 +285,7 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
             for (size_t key_offset = 0; key_offset < 4 && key_id + key_offset < predicate_key_count; key_offset++)
             {
-                outputs[key_id + key_offset][oi] = result_reg[key_offset];
-                //memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
+                memcpy(outputs[key_id + key_offset].data() + oi, &result_reg[key_offset], sizeof(uint32_t));
             }
         }
 
@@ -403,8 +399,7 @@ void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
                     for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        outputs[key_id + key_offset][oi] = result_reg[key_offset];
-                        //memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
+                        memcpy(outputs[key_id + key_offset].data() + oi, &result_reg[key_offset], sizeof(uint32_t));
                     }
                     oi += 4;
 
@@ -448,8 +443,7 @@ void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
                     for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
                     {
-                        outputs[key_id + key_offset][oi] = result_reg[key_offset];
-                        //memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
+                        memcpy(outputs[key_id + key_offset].data() + oi, &result_reg[key_offset], sizeof(uint32_t));
                     }
 
                     // reset these registers
@@ -473,8 +467,7 @@ void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* i
 
             for (size_t key_offset = 0; key_offset < 8 && key_id + key_offset < predicate_key_count; key_offset++)
             {
-                outputs[key_id + key_offset][oi] = result_reg[key_offset];
-                //memcpy(outputs[key_id + key_offset].data() + oi, &output.m128i_u32[key_offset], sizeof(uint32_t));
+                memcpy(outputs[key_id + key_offset].data() + oi, &result_reg[key_offset], sizeof(uint32_t));
             }
         }
 
