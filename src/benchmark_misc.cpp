@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <vector>
+#include <cstring>
 
 #include "benchmark.hpp"
 #include "profiling.hpp"

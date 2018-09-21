@@ -13,8 +13,8 @@ bool get_bit(std::vector<uint8_t> const& vector, size_t absolute_index);
 #if defined(_MSC_VER)
     #include <intrin.h>
     #define POPCNT(i) __popcnt(i)
-#elif defined(defined(__GNUC__))
+#elif defined(__GNUC__)
     #define POPCNT(i) __builtin_popcount(i)
-#elif 
+#else 
     #define POPCNT(i) (0)
 #endif

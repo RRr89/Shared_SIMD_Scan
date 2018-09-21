@@ -1,3 +1,7 @@
+#pragma once
+
+#define _mm256_loadu2_m128i(hi, lo) (_mm256_set_m128i(_mm_loadu_si128(hi), _mm_loadu_si128(lo)))
+
 inline void generate_shuffle_mask_128(int compression, __m128i shuffle_mask[2])
 {
     size_t input_offset[8];
