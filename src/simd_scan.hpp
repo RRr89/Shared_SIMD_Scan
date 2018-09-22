@@ -13,7 +13,7 @@
 
 /*
 * Helper functions for calculating the size of the necessary buffers. These sizes include
-* padding such that SSE/AVX instruction don't read/write outside of the buffers.
+* padding such that SSE/AVX instructions don't read/write outside of the buffers.
 * All returned sizes are in bytes.
 */
 
