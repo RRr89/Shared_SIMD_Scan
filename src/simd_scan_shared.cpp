@@ -154,6 +154,7 @@ void shared_scan_128_standard_unrolled(std::vector<int> const& predicate_keys, _
         for (int key_id = 0; key_id < predicate_key_count; key_id++)
         {
             reinterpret_cast<uint32_t*>(outputs[key_id].data())[output_index] = output[key_id];
+            output[key_id] = 0;
         }
 
         output_index += 1;
