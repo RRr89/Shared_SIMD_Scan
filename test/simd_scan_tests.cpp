@@ -19,7 +19,8 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 
     SECTION("Unvectorized decompression") 
     {
-        auto result_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
+        size_t output_buffer_size = decompression_output_buffer_size(input_size) / sizeof(int);
+        auto result_buffer = std::make_unique<int[]>(output_buffer_size);
         decompress_unvectorized(compressed_ptr, input_numbers.size(), result_buffer.get());
 
         for (size_t i = 0; i < input_numbers.size(); i++)
@@ -30,7 +31,8 @@ TEST_CASE("Compress and decompress", "[simd-decompress]")
 
     SECTION("SIMD decompression (SSE)") 
     {
-        auto result_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
+        size_t output_buffer_size = decompression_output_buffer_size(input_size) / sizeof(int);
+        auto result_buffer = std::make_unique<int[]>(output_buffer_size);
         decompress_128_sweep(compressed_ptr, input_numbers.size(), result_buffer.get());
 
         for (size_t i = 0; i < input_numbers.size(); i++)
@@ -50,7 +52,8 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
 
     SECTION("Unvectorized scan") 
     {
-        std::vector<uint8_t> output(input_numbers.size() / 8 + 1);
+        auto output_buffer_size = scan_output_buffer_size(input_numbers.size());
+        std::vector<uint8_t> output(output_buffer_size);
         int predicate_key = 3;
         int hits = scan_unvectorized(predicate_key, compressed_ptr, input_numbers.size(), output);
 
@@ -64,7 +67,8 @@ TEST_CASE("SIMD Scan", "[simd-scan]")
 
     SECTION("SIMD scan (SSE)")
     {
-        std::vector<uint8_t> output(next_multiple(input_numbers.size(), 8) / 8);
+        auto output_buffer_size = scan_output_buffer_size(input_numbers.size());
+        std::vector<uint8_t> output(output_buffer_size);
         int predicate_key = 3;
         int hits = scan_128(predicate_key, compressed_ptr, input_numbers.size(), output);
 
@@ -87,7 +91,7 @@ TEST_CASE("Shared SIMD Scan", "[shared-simd-scan]")
 
     std::vector<int> predicate_keys{ 1, 2, 3 };
 
-    size_t output_buffer_size = next_multiple(input_numbers.size() / 8 + 1, 8);
+    auto output_buffer_size = scan_output_buffer_size(input_numbers.size());
     std::vector<std::vector<uint8_t>> outputs(predicate_keys.size(), std::vector<uint8_t>(output_buffer_size));
 
     shared_scan_128_sequential(predicate_keys, compressed_ptr, input_numbers.size(), outputs);

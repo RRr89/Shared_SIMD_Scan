@@ -48,11 +48,6 @@ void dump_memory(const void* mem, size_t bytes, std::ostream& os)
     }
 }
 
-int next_multiple(int number, int multiple)
-{
-    return ((number + multiple - 1) / multiple) * multiple;
-}
-
 bool get_bit(std::vector<uint8_t> const& vector, size_t absolute_index)
 {
     size_t vector_index = absolute_index / 8;

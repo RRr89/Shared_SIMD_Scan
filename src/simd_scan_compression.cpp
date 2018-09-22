@@ -52,13 +52,10 @@ void* compress_9bit_input_original(std::vector<uint16_t>& input)
 
 std::unique_ptr<uint64_t[]> compress_9bit_input(std::vector<uint16_t>& input)
 {
-    const int element_size = 8 * sizeof(uint64_t);
-
-    auto bits_needed = BITS_NEEDED;
-    auto mem_size = bits_needed * input.size();
-    int array_size = next_multiple(ceil((double)mem_size / element_size), 4);
-
-    auto buffer = std::make_unique<uint64_t[]>(array_size);
+    auto element_size = 8 * sizeof(uint64_t);
+    auto compression = BITS_NEEDED;
+    auto buffer_size = compressed_buffer_size(compression, input.size()) / sizeof(uint64_t);
+    auto buffer = std::make_unique<uint64_t[]>(buffer_size);
 
     // these are for making the ptr align to 16/32 byte boundaries,
     // turns out it makes no difference in performance though.
@@ -72,9 +69,9 @@ std::unique_ptr<uint64_t[]> compress_9bit_input(std::vector<uint16_t>& input)
     {
         uint64_t tmp_buffer = 0;
         tmp_buffer = tmp_buffer | input[i];
-        tmp_buffer = tmp_buffer << (i * bits_needed); // TODO undefined behaviour?
+        tmp_buffer = tmp_buffer << (i * compression); // TODO undefined behaviour?
         buffer[idx_] = buffer[idx_] | tmp_buffer;
-        remaining_buffer_size -= bits_needed;
+        remaining_buffer_size -= compression;
 
         if (remaining_buffer_size == 0)
         {
@@ -82,7 +79,7 @@ std::unique_ptr<uint64_t[]> compress_9bit_input(std::vector<uint16_t>& input)
             remaining_buffer_size = element_size;
             continue;
         }
-        else if (remaining_buffer_size < bits_needed)
+        else if (remaining_buffer_size < compression)
         {
             i++;
             if (i == input.size()) break;
@@ -99,7 +96,7 @@ std::unique_ptr<uint64_t[]> compress_9bit_input(std::vector<uint16_t>& input)
             tmp_buffer = tmp_buffer | input[i];
             tmp_buffer = tmp_buffer >> remaining_buffer_size;
             buffer[idx_] = buffer[idx_] | tmp_buffer;
-            remaining_buffer_size = element_size - (bits_needed - remaining_buffer_size);
+            remaining_buffer_size = element_size - (compression - remaining_buffer_size);
         }
     }
 

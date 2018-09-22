@@ -340,6 +340,7 @@ inline __m128i _mm_alignr_epi8_nonconst(__m128i a, __m128i b, int count)
     case 15: return _mm_alignr_epi8(a, b, 15);
     case 16: return a;
     }
+    return a;
 }
 
 void decompress_128_aligned(__m128i* input, size_t input_size, int* output)

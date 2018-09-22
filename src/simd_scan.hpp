@@ -7,7 +7,41 @@
 #include <bitset>
 #include <memory>
 
+#include "util.hpp"
+
 #define BITS_NEEDED 9
+
+/*
+* Helper functions for calculating the size of the necessary buffers. These sizes include
+* padding such that SSE/AVX instruction don't read/write outside of the buffers.
+* All returned sizes are in bytes.
+*/
+
+constexpr size_t compressed_buffer_size(uint8_t compression, size_t input_array_size)
+{
+    auto mem_size = compression * input_array_size;
+    auto bytes = mem_size / 8 + (mem_size % 8 != 0);
+    auto padding = 256;
+    return bytes + padding;
+}
+
+constexpr size_t decompression_output_buffer_size(size_t input_array_size)
+{
+    auto size = input_array_size * 4;
+    auto padding = 32;
+    return size + padding;
+}
+
+constexpr size_t scan_output_buffer_size(size_t input_array_size)
+{
+    auto bytes = input_array_size / 8 + (input_array_size % 8 != 0);
+    auto padding = 32;
+    return bytes + padding;
+}
+
+/* 
+* Compression
+*/
 
 std::unique_ptr<uint64_t[]> compress_9bit_input(std::vector<uint16_t>& input);
 

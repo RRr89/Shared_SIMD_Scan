@@ -55,7 +55,8 @@ void do_decompression_benchmark(
     std::function<void(__m128i*, size_t, int*)> decompression_function) 
 {
     size_t elapsed_time_us[benchmark_repetions];
-    std::unique_ptr<int[]> output_buffer = std::make_unique<int[]>(next_multiple(input_size, 8));
+    size_t output_buffer_size = decompression_output_buffer_size(input_size) / sizeof(int);
+    std::unique_ptr<int[]> output_buffer = std::make_unique<int[]>(output_buffer_size);
 
     for (int i = 0; i < benchmark_repetions; ++i)
     {
@@ -128,7 +129,8 @@ void do_scan_benchmark(
 {
     int predicate_key = 3;
     size_t elapsed_time_us[benchmark_repetions];
-    std::vector<uint8_t> output_buffer(next_multiple(input_size, 8) / 8);
+    auto output_buffer_size = scan_output_buffer_size(input_size);
+    std::vector<uint8_t> output_buffer(output_buffer_size);
 
     for (int i = 0; i < benchmark_repetions; ++i)
     {
@@ -189,7 +191,7 @@ void do_shared_scan_benchmark(
 
     size_t elapsed_time_us[benchmark_repetions];
 
-    size_t output_buffer_size = next_multiple(input_size / 8 + 1, 8);
+    size_t output_buffer_size = scan_output_buffer_size(input_size);
     std::vector<std::vector<uint8_t>> output_buffers(predicate_key_count, std::vector<uint8_t>(output_buffer_size));
 
     for (int i = 0; i < benchmark_repetions; ++i)
