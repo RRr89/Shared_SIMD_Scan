@@ -11,21 +11,21 @@
 #include <functional>
 #include <omp.h>
 
-void print_numbers(std::string benchmark_name, const size_t elapsed_time_us[benchmark_repetions])
+void print_numbers(std::string benchmark_name, const size_t elapsed_time_us[benchmark_repetitions])
 {
     std::cout << benchmark_name << ": ";
 
     size_t sum = 0;
-    for (int i = 0; i < benchmark_repetions; i++)
+    for (int i = 0; i < benchmark_repetitions; i++)
     {
         sum += elapsed_time_us[i];
     }
 
-    size_t avg = sum / benchmark_repetions;
+    size_t avg = sum / benchmark_repetitions;
 
     std::cout << (avg / 1000000) << " ms; [";
 
-    for (int i = 0; i < benchmark_repetions; i++)
+    for (int i = 0; i < benchmark_repetitions; i++)
     {
         if (i != 0) std::cout << ", ";
         std::cout << (elapsed_time_us[i] / 1000000);
@@ -54,11 +54,11 @@ void do_decompression_benchmark(
     __m128i* compressed_data,
     std::function<void(__m128i*, size_t, int*)> decompression_function) 
 {
-    size_t elapsed_time_us[benchmark_repetions];
+    size_t elapsed_time_us[benchmark_repetitions];
     size_t output_buffer_size = decompression_output_buffer_size(input_size) / sizeof(int);
     std::unique_ptr<int[]> output_buffer = std::make_unique<int[]>(output_buffer_size);
 
-    for (int i = 0; i < benchmark_repetions; ++i)
+    for (int i = 0; i < benchmark_repetitions; ++i)
     {
         _clock();
         decompression_function(compressed_data, input_size, output_buffer.get());
@@ -128,11 +128,11 @@ void do_scan_benchmark(
     std::function<int(int, __m128i*, size_t, std::vector<uint8_t>&)> scan_function)
 {
     int predicate_key = 3;
-    size_t elapsed_time_us[benchmark_repetions];
+    size_t elapsed_time_us[benchmark_repetitions];
     auto output_buffer_size = scan_output_buffer_size(input_size);
     std::vector<uint8_t> output_buffer(output_buffer_size);
 
-    for (int i = 0; i < benchmark_repetions; ++i)
+    for (int i = 0; i < benchmark_repetitions; ++i)
     {
         _clock();
         scan_function(predicate_key, compressed_data, input_size, output_buffer);
@@ -189,12 +189,12 @@ void do_shared_scan_benchmark(
         predicate_keys[i] = i;
     }
 
-    size_t elapsed_time_us[benchmark_repetions];
+    size_t elapsed_time_us[benchmark_repetitions];
 
     size_t output_buffer_size = scan_output_buffer_size(input_size);
     std::vector<std::vector<uint8_t>> output_buffers(predicate_key_count, std::vector<uint8_t>(output_buffer_size));
 
-    for (int i = 0; i < benchmark_repetions; ++i)
+    for (int i = 0; i < benchmark_repetitions; ++i)
     {
         _clock();
         shared_scan_function(predicate_keys, compressed_data, input_size, output_buffers);
