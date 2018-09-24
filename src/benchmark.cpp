@@ -13,7 +13,7 @@
 
 void print_numbers(std::string benchmark_name, const size_t elapsed_time_us[benchmark_repetitions])
 {
-    std::cout << benchmark_name << ": ";
+    std::cout << "* " << benchmark_name << ": ";
 
     size_t sum = 0;
     for (int i = 0; i < benchmark_repetitions; i++)
@@ -83,7 +83,6 @@ void bench_decompression()
     std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
     __m128i* compressed_ptr = (__m128i*) compressed.get();
 
-    std::cout.imbue(std::locale(""));
     std::cout << "## decompression benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
@@ -157,7 +156,6 @@ void bench_scan()
     std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
     __m128i* compressed_ptr = (__m128i*) compressed.get();
 
-    std::cout.imbue(std::locale(""));
     std::cout << "## scan benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
 
@@ -230,7 +228,6 @@ void bench_shared_scan(int predicate_key_count, bool relative_data_size)
     std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
     __m128i* compressed_ptr = (__m128i*) compressed.get();
 
-    std::cout.imbue(std::locale(""));
     std::cout << "## shared scan benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
     std::cout << "predicate key count: " << predicate_key_count << std::endl;
