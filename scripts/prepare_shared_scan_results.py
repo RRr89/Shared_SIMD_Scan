@@ -22,5 +22,5 @@ def parse_output(predicate_count, output):
 for i in range(1, 33):
     predicate_count = i
     print('# predicate count: {}'.format(predicate_count))
-    result = subprocess.run([simdscan, 'sharedscan', str(predicate_count)], stdout=subprocess.PIPE)
+    result = subprocess.run([simdscan, '_', 'sharedscan', str(predicate_count)], stdout=subprocess.PIPE)
     parse_output(predicate_count, result.stdout.decode('utf-8'))

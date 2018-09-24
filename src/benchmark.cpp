@@ -68,11 +68,10 @@ void do_decompression_benchmark(
     check_decompression_result(input, output_buffer.get(), input_size);
 }
 
-void bench_decompression()
+void bench_decompression(size_t data_size)
 {
     size_t compression = 9;
-    size_t buffer_target_size = data_size;
-    size_t input_size = buffer_target_size * 8 / compression;
+    size_t input_size = data_size * 8 / compression;
 
     std::vector<uint16_t> input(input_size);
     for (size_t i = 0; i < input_size; i++)
@@ -84,7 +83,7 @@ void bench_decompression()
     __m128i* compressed_ptr = (__m128i*) compressed.get();
 
     std::cout << "## decompression benchmarks ##" << std::endl;
-    std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
+    std::cout << "compressed input: " << input_size << " (" << data_size << " bytes)" << std::endl;
 
     do_decompression_benchmark("unvectorized", input, input_size, compressed_ptr, decompress_unvectorized);
     //do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed_ptr, decompress_128_sweep);
@@ -141,11 +140,10 @@ void do_scan_benchmark(
     check_scan_result(input, input_size, output_buffer, predicate_key);
 }
 
-void bench_scan() 
+void bench_scan(size_t data_size) 
 {
     size_t compression = 9;
-    size_t buffer_target_size = data_size;
-    size_t input_size = buffer_target_size * 8 / compression;
+    size_t input_size = data_size * 8 / compression;
 
     std::vector<uint16_t> input(input_size);
     for (size_t i = 0; i < input_size; i++)
@@ -157,7 +155,7 @@ void bench_scan()
     __m128i* compressed_ptr = (__m128i*) compressed.get();
 
     std::cout << "## scan benchmarks ##" << std::endl;
-    std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
+    std::cout << "compressed input: " << input_size << " (" << data_size << " bytes)" << std::endl;
 
     do_scan_benchmark("unvectorized", input, input_size, compressed_ptr, scan_unvectorized);
     do_scan_benchmark("sse 128", input, input_size, compressed_ptr, scan_128);
@@ -207,17 +205,16 @@ void do_shared_scan_benchmark(
     }
 }
 
-void bench_shared_scan(int predicate_key_count, bool relative_data_size)
+void bench_shared_scan(size_t data_size, int predicate_key_count, bool relative_data_size)
 {
     size_t compression = 9;
 
-    size_t buffer_target_size = data_size >> 3;
     if (relative_data_size)
     {
-        buffer_target_size = data_size / predicate_key_count;
+        data_size / predicate_key_count;
     }
     
-    size_t input_size = buffer_target_size * 8 / compression;
+    size_t input_size = data_size * 8 / compression;
 
     std::vector<uint16_t> input(input_size);
     for (size_t i = 0; i < input_size; i++)
@@ -229,7 +226,7 @@ void bench_shared_scan(int predicate_key_count, bool relative_data_size)
     __m128i* compressed_ptr = (__m128i*) compressed.get();
 
     std::cout << "## shared scan benchmarks ##" << std::endl;
-    std::cout << "compressed input: " << input_size << " (" << buffer_target_size << " bytes)" << std::endl;
+    std::cout << "compressed input: " << input_size << " (" << data_size << " bytes)" << std::endl;
     std::cout << "predicate key count: " << predicate_key_count << std::endl;
 
     do_shared_scan_benchmark("sse 128, sequential", input, input_size, compressed_ptr, shared_scan_128_sequential, predicate_key_count);
