@@ -11,8 +11,9 @@
 #include <functional>
 #include <omp.h>
 
-void print_numbers(std::string benchmark_name, const size_t elapsed_time_us[benchmark_repetitions])
+void print_numbers(std::string benchmark_name, std::vector<size_t> const& elapsed_time_us)
 {
+    size_t benchmark_repetitions = elapsed_time_us.size();
     std::cout << "* " << benchmark_name << ": ";
 
     size_t sum = 0;
@@ -48,13 +49,14 @@ bool check_decompression_result(std::vector<uint16_t> input, int* output, size_t
 }
 
 void do_decompression_benchmark(
-    std::string name, 
+    std::string name,
+    size_t benchmark_repetitions,
     std::vector<uint16_t> input,
     size_t input_size, 
     __m128i* compressed_data,
     std::function<void(__m128i*, size_t, int*)> decompression_function) 
 {
-    size_t elapsed_time_us[benchmark_repetitions];
+    std::vector<size_t> elapsed_time_us(benchmark_repetitions);
     size_t output_buffer_size = decompression_output_buffer_size(input_size) / sizeof(int);
     std::unique_ptr<int[]> output_buffer = std::make_unique<int[]>(output_buffer_size);
 
@@ -68,7 +70,7 @@ void do_decompression_benchmark(
     check_decompression_result(input, output_buffer.get(), input_size);
 }
 
-void bench_decompression(size_t data_size)
+void bench_decompression(size_t data_size, size_t repetitions)
 {
     size_t compression = 9;
     size_t input_size = data_size * 8 / compression;
@@ -85,18 +87,18 @@ void bench_decompression(size_t data_size)
     std::cout << "## decompression benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << data_size << " bytes)" << std::endl;
 
-    do_decompression_benchmark("unvectorized", input, input_size, compressed_ptr, decompress_unvectorized);
-    //do_decompression_benchmark("sse 128 (sweep)", input, input_size, compressed_ptr, decompress_128_sweep);
-    //do_decompression_benchmark("sse 128 (load after 4)", input, input_size, compressed_ptr, decompress_128_nosweep);
-    //do_decompression_benchmark("sse 128 (9 bit optimized masks)", input, input_size, compressed_ptr, decompress_128_9bit);
-    //do_decompression_benchmark("sse 128 (optimized masks)", input, input_size, compressed_ptr, decompress_128);
-    do_decompression_benchmark("sse 128 (optimized masks + unrolled loop)", input, input_size, compressed_ptr, decompress_128_unrolled);
-    //do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", input, input_size, compressed_ptr, decompress_128_aligned);
+    do_decompression_benchmark("unvectorized", repetitions, input, input_size, compressed_ptr, decompress_unvectorized);
+    do_decompression_benchmark("sse 128 (sweep)", repetitions, input, input_size, compressed_ptr, decompress_128_sweep);
+    do_decompression_benchmark("sse 128 (load after 4)", repetitions, input, input_size, compressed_ptr, decompress_128_nosweep);
+    do_decompression_benchmark("sse 128 (9 bit optimized masks)", repetitions, input, input_size, compressed_ptr, decompress_128_9bit);
+    do_decompression_benchmark("sse 128 (optimized masks)", repetitions, input, input_size, compressed_ptr, decompress_128);
+    do_decompression_benchmark("sse 128 (optimized masks + unrolled loop)", repetitions, input, input_size, compressed_ptr, decompress_128_unrolled);
+    do_decompression_benchmark("sse 128 (optimized masks + aligned loads)", repetitions, input, input_size, compressed_ptr, decompress_128_aligned);
 
 #ifdef __AVX__
-    do_decompression_benchmark("avx 256", input, input_size, compressed_ptr, decompress_256);
+    do_decompression_benchmark("avx 256", repetitions, input, input_size, compressed_ptr, decompress_256);
 #ifdef __AVX2__
-    do_decompression_benchmark("avx 256 (avx2 shift)", input, input_size, compressed_ptr, decompress_256_avx2);
+    do_decompression_benchmark("avx 256 (avx2 shift)", repetitions, input, input_size, compressed_ptr, decompress_256_avx2);
 #endif
 #else
     std::cout << "avx 256 is not supported" << std::endl;
@@ -120,13 +122,14 @@ bool check_scan_result(std::vector<uint16_t> input, size_t size, std::vector<uin
 
 void do_scan_benchmark(
     std::string name,
+    size_t benchmark_repetitions,
     std::vector<uint16_t> input,
     size_t input_size,
     __m128i* compressed_data,
     std::function<int(int, __m128i*, size_t, std::vector<uint8_t>&)> scan_function)
 {
     int predicate_key = 3;
-    size_t elapsed_time_us[benchmark_repetitions];
+    std::vector<size_t> elapsed_time_us(benchmark_repetitions);
     auto output_buffer_size = scan_output_buffer_size(input_size);
     std::vector<uint8_t> output_buffer(output_buffer_size);
 
@@ -140,7 +143,7 @@ void do_scan_benchmark(
     check_scan_result(input, input_size, output_buffer, predicate_key);
 }
 
-void bench_scan(size_t data_size) 
+void bench_scan(size_t data_size, size_t repetitions) 
 {
     size_t compression = 9;
     size_t input_size = data_size * 8 / compression;
@@ -157,13 +160,13 @@ void bench_scan(size_t data_size)
     std::cout << "## scan benchmarks ##" << std::endl;
     std::cout << "compressed input: " << input_size << " (" << data_size << " bytes)" << std::endl;
 
-    do_scan_benchmark("unvectorized", input, input_size, compressed_ptr, scan_unvectorized);
-    do_scan_benchmark("sse 128", input, input_size, compressed_ptr, scan_128);
-    do_scan_benchmark("sse 128 (unrolled)", input, input_size, compressed_ptr, scan_128_unrolled);
+    do_scan_benchmark("unvectorized", repetitions, input, input_size, compressed_ptr, scan_unvectorized);
+    do_scan_benchmark("sse 128", repetitions, input, input_size, compressed_ptr, scan_128);
+    do_scan_benchmark("sse 128 (unrolled)", repetitions, input, input_size, compressed_ptr, scan_128_unrolled);
 
 #ifdef __AVX__
-    do_scan_benchmark("avx 256", input, input_size, compressed_ptr, scan_256);
-    do_scan_benchmark("avx 256 (unrolled)", input, input_size, compressed_ptr, scan_256_unrolled);
+    do_scan_benchmark("avx 256", repetitions, input, input_size, compressed_ptr, scan_256);
+    do_scan_benchmark("avx 256 (unrolled)", repetitions, input, input_size, compressed_ptr, scan_256_unrolled);
 #else
     std::cout << "avx 256 is not supported" << std::endl;
 #endif
@@ -173,6 +176,7 @@ void bench_scan(size_t data_size)
 
 void do_shared_scan_benchmark(
     std::string name,
+    size_t benchmark_repetitions,
     std::vector<uint16_t> input,
     size_t input_size,
     __m128i* compressed_data,
@@ -185,7 +189,7 @@ void do_shared_scan_benchmark(
         predicate_keys[i] = i;
     }
 
-    size_t elapsed_time_us[benchmark_repetitions];
+    std::vector<size_t> elapsed_time_us(benchmark_repetitions);
 
     size_t output_buffer_size = scan_output_buffer_size(input_size);
     std::vector<std::vector<uint8_t>> output_buffers(predicate_key_count, std::vector<uint8_t>(output_buffer_size));
@@ -205,7 +209,7 @@ void do_shared_scan_benchmark(
     }
 }
 
-void bench_shared_scan(size_t data_size, int predicate_key_count, bool relative_data_size)
+void bench_shared_scan(size_t data_size, size_t repetitions, int predicate_key_count, bool relative_data_size)
 {
     size_t compression = 9;
 
@@ -229,20 +233,20 @@ void bench_shared_scan(size_t data_size, int predicate_key_count, bool relative_
     std::cout << "compressed input: " << input_size << " (" << data_size << " bytes)" << std::endl;
     std::cout << "predicate key count: " << predicate_key_count << std::endl;
 
-    do_shared_scan_benchmark("sse 128, sequential", input, input_size, compressed_ptr, shared_scan_128_sequential, predicate_key_count);
-    do_shared_scan_benchmark("sse 128, sequential (unrolled)", input, input_size, compressed_ptr, shared_scan_128_sequential_unrolled, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, sequential", repetitions, input, input_size, compressed_ptr, shared_scan_128_sequential, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, sequential (unrolled)", repetitions, input, input_size, compressed_ptr, shared_scan_128_sequential_unrolled, predicate_key_count);
     
     int num_threads = omp_get_max_threads();
-    do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", repetitions, input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
 
-    do_shared_scan_benchmark("sse 128, standard", input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
-    do_shared_scan_benchmark("sse 128, standard (unrolled)", input, input_size, compressed_ptr, shared_scan_128_standard_unrolled, predicate_key_count);
-    do_shared_scan_benchmark("sse 128, parallel", input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, standard", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, standard (unrolled)", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard_unrolled, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, parallel", repetitions, input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
 
 #ifdef __AVX__
-    do_shared_scan_benchmark("avx 256, sequential", input, input_size, compressed_ptr, shared_scan_256_sequential, predicate_key_count);
-    do_shared_scan_benchmark("avx 256, standard", input, input_size, compressed_ptr, shared_scan_256_standard, predicate_key_count);
-    do_shared_scan_benchmark("avx 256, parallel", input, input_size, compressed_ptr, shared_scan_256_parallel, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, sequential", repetitions, input, input_size, compressed_ptr, shared_scan_256_sequential, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, standard", repetitions, input, input_size, compressed_ptr, shared_scan_256_standard, predicate_key_count);
+    do_shared_scan_benchmark("avx 256, parallel", repetitions, input, input_size, compressed_ptr, shared_scan_256_parallel, predicate_key_count);
 #endif
 
     std::cout << "finished benchmark" << std::endl;
