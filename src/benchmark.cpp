@@ -223,7 +223,7 @@ void bench_shared_scan(size_t data_size, size_t repetitions, int predicate_key_c
     std::vector<uint16_t> input(input_size);
     for (size_t i = 0; i < input_size; i++)
     {
-        input[i] = (uint16_t)(i % predicate_key_count);
+        input[i] = (uint16_t)(i % predicate_key_count % (1 << compression));
     }
 
     std::unique_ptr<uint64_t[]> compressed = compress_9bit_input(input);
