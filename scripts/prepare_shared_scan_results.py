@@ -19,8 +19,9 @@ def parse_output(predicate_count, output):
         avg_runtime_ms = line.split(': ')[1].split('; ')[0][:-2]
         csv_writer.writerow([predicate_count, variant, avg_runtime_ms])
 
-for i in range(1, 33):
+for i in range(1, 513):
     predicate_count = i
     print('# predicate count: {}'.format(predicate_count))
-    result = subprocess.run([simdscan, '_', '_', 'sharedscan', str(predicate_count)], stdout=subprocess.PIPE)
+    result = subprocess.run([simdscan, '30', '3', 'sharedscan', str(predicate_count)], stdout=subprocess.PIPE)
+    print('# {}'.format(result.args))
     parse_output(predicate_count, result.stdout.decode('utf-8'))

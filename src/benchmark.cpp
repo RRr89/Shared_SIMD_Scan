@@ -205,7 +205,7 @@ void do_shared_scan_benchmark(
 
     for (size_t i = 0; i < predicate_key_count; i++)
     {
-        check_scan_result(input, input_size, output_buffers[i], predicate_keys[i]);
+        //check_scan_result(input, input_size, output_buffers[i], predicate_keys[i]);
     }
 }
 
@@ -237,16 +237,16 @@ void bench_shared_scan(size_t data_size, size_t repetitions, int predicate_key_c
     do_shared_scan_benchmark("sse 128, sequential (unrolled)", repetitions, input, input_size, compressed_ptr, shared_scan_128_sequential_unrolled, predicate_key_count);
     
     int num_threads = omp_get_max_threads();
-    do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", repetitions, input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
+    // do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", repetitions, input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
 
     do_shared_scan_benchmark("sse 128, standard", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
     do_shared_scan_benchmark("sse 128, standard (unrolled)", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard_unrolled, predicate_key_count);
     do_shared_scan_benchmark("sse 128, parallel", repetitions, input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
 
 #ifdef __AVX__
-    do_shared_scan_benchmark("avx 256, sequential", repetitions, input, input_size, compressed_ptr, shared_scan_256_sequential, predicate_key_count);
-    do_shared_scan_benchmark("avx 256, standard", repetitions, input, input_size, compressed_ptr, shared_scan_256_standard, predicate_key_count);
-    do_shared_scan_benchmark("avx 256, parallel", repetitions, input, input_size, compressed_ptr, shared_scan_256_parallel, predicate_key_count);
+    // do_shared_scan_benchmark("avx 256, sequential", repetitions, input, input_size, compressed_ptr, shared_scan_256_sequential, predicate_key_count);
+    // do_shared_scan_benchmark("avx 256, standard", repetitions, input, input_size, compressed_ptr, shared_scan_256_standard, predicate_key_count);
+    // do_shared_scan_benchmark("avx 256, parallel", repetitions, input, input_size, compressed_ptr, shared_scan_256_parallel, predicate_key_count);
 #endif
 
     std::cout << "finished benchmark" << std::endl;
