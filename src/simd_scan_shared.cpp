@@ -294,6 +294,95 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
     }
 }
 
+
+// based on scan_unvectorized, just 4 times in parallel with SSE!
+void shared_scan_128_parallel_v2(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
+{
+    size_t compression = BITS_NEEDED;
+    size_t predicate_key_count = predicate_keys.size();
+    uint32_t* in = reinterpret_cast<uint32_t*>(input);
+
+    __m128i clean_mask = _mm_set1_epi32((1 << compression) - 1);
+
+    // process in groups of (maximum) 4 predicates
+    for (size_t key_id = 0; key_id < predicate_key_count; key_id += 4)
+    {
+        uint32_t* out[4];
+        for (size_t key_offset = 0; key_offset < 4; key_offset++)
+        {
+            if (key_id + key_offset < predicate_key_count)
+            {
+                out[key_offset] = reinterpret_cast<uint32_t*>(outputs[key_id + key_offset].data());
+            }
+            else 
+            {
+                out[key_offset] = reinterpret_cast<uint32_t*>(outputs[predicate_key_count - 1].data());
+            }
+        }
+        size_t output_index = 0; // number of result uint32_t written
+
+        __m128i output = _mm_setzero_si128(); // holds 32 output bits for each predicate
+        size_t output_bits_used = 0;
+        __m128i output_match_mask = _mm_set1_epi32(1); // used for masking out one bit in the comparison result register
+
+        __m128i predicate_key = _mm_setr_epi32(
+            predicate_keys[std::min(key_id, predicate_key_count - 1)], 
+            predicate_keys[std::min(key_id + 1, predicate_key_count - 1)],
+            predicate_keys[std::min(key_id + 2, predicate_key_count - 1)],
+            predicate_keys[std::min(key_id + 3, predicate_key_count - 1)]);
+
+        size_t total_processed_bytes = 0;
+        size_t overflow_bits = 0;
+
+        while (32 * output_index < input_size)
+        {
+            uint32_t* next = (uint32_t*)((uint8_t*)in + total_processed_bytes);
+
+            __m128i raw_next = _mm_set1_epi32(*next);
+            __m128i shr_amount = _mm_set_epi64x(0, overflow_bits);
+            __m128i current = _mm_srl_epi32(raw_next, shr_amount);
+
+            size_t unread_bits = 32 - overflow_bits;
+            while (unread_bits >= compression)
+            {
+                // clean and match against predicate
+                __m128i cleaned_element = _mm_and_si128(current, clean_mask);
+                __m128i match = _mm_cmpeq_epi32(cleaned_element, predicate_key);
+
+                // mask out one bit from the comparison result and OR it to the output registers
+                __m128i masked_match = _mm_and_si128(match, output_match_mask);
+                output = _mm_or_si128(output, masked_match);
+                output_match_mask = _mm_slli_epi32(output_match_mask, 1); // << 1
+                output_bits_used += 1;
+
+                // if the output register is filled, write results to the output vector
+                if (output_bits_used == 32)
+                {
+                    uint32_t result_reg[4];
+                    _mm_storeu_si128((__m128i*)&result_reg, output);
+
+                    out[0][output_index] = result_reg[0];
+                    out[1][output_index] = result_reg[1];
+                    out[2][output_index] = result_reg[2];
+                    out[3][output_index] = result_reg[3];
+                    output_index += 1;
+
+                    // reset these registers
+                    output = _mm_setzero_si128();
+                    output_match_mask = _mm_set1_epi32(1);
+                    output_bits_used = 0;
+                }
+
+                current = _mm_srli_epi32(current, compression); // current >> compression
+                unread_bits -= compression;
+            }
+
+            total_processed_bytes += (32 - unread_bits) / 8;
+            overflow_bits = 8 - unread_bits;
+        }
+    }
+}
+
 #ifdef __AVX__
 void shared_scan_256_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
