@@ -1,13 +1,15 @@
 #pragma once
 #include <string>
 
-static const size_t data_size = 1.5*(1 << 30);
-static const std::string data_size_str = "1.5 GB";
+const size_t default_data_size = 500 * 1 << 20;
+const size_t default_benchmark_repetitions = 5;
 
-void bench_decompression();
-void bench_scan();
-void bench_shared_scan();
+void bench_decompression(size_t data_size = default_data_size, size_t benchmark_repetitions = default_benchmark_repetitions);
+void bench_scan(size_t data_size = default_data_size, size_t benchmark_repetitions = default_benchmark_repetitions);
+void bench_shared_scan(size_t data_size = default_data_size, size_t benchmark_repetitions = default_benchmark_repetitions, 
+                       int predicate_key_count = 8, bool relative_data_size = false);
 
 // misc
-template<typename T> void bench_memory();
+template<typename T> void bench_memory(size_t data_size = default_data_size);
+void bench_memcpy(size_t data_size = default_data_size);
 void test_timer();
