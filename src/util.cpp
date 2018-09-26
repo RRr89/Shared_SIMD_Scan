@@ -61,3 +61,13 @@ bool get_bit(std::vector<uint8_t> const& vector, size_t absolute_index)
     bool bit = (element & (1 << bit_index)) > 0;
     return bit;
 }
+
+bool get_bit(std::vector<uint32_t> const& vector, size_t absolute_index)
+{
+    size_t vector_index = absolute_index / 8;
+    uint8_t element = vector[vector_index];
+    size_t bit_index = absolute_index % 8;
+    bool bit = (element & (1 << bit_index)) > 0;
+    return bit;
+}
+
