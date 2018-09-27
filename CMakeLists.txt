@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(shared_simd_scan)
 
-SET(CMAKE_C_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/gcc)
-SET(CMAKE_CXX_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/g++)
+#SET(CMAKE_C_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/gcc)
+#SET(CMAKE_CXX_COMPILER /data/hdbcc/.hdbccdata/tools/gcc-6.2.1+r239768-2.4.sap20170207-linuxx86_64/bin/g++)
 
 option(ENABLE_AVX "Enable AVX-aware code" ON)
 option(ENABLE_AVX2 "Enable AVX2-aware code (AVX must be enabled)" ON)

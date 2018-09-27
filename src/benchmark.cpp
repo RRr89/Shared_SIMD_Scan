@@ -106,27 +106,26 @@ void bench_decompression(size_t data_size, size_t repetitions)
     std::cout << "finished benchmark" << std::endl;
 }
 
-bool check_scan_result(const std::vector<uint16_t>& input, size_t size, std::vector<uint8_t> const& output, int predicate_key)
+bool check_scan_result(std::vector<uint16_t> const& input, size_t size, std::vector<uint8_t> const& output, int predicate_key)
 {
     for (size_t i = 0; i < size; i++)
     {
         if (get_bit(output, i) != (input[i] == predicate_key))
         {
             std::cout << "first mismatch at index " << i << std::endl;
-            std::cout << "get_bit(output, " << i << ") [=" << get_bit(output, i) << "] != (input[" << i << "] [=" << input[i] << "] == predicate_key [=" << predicate_key << "])" << std::endl;
             return false;
         }
     }
     return true;
 }
 
-bool check_scan_result(const std::vector<uint16_t>& input, const std::vector<uint8_t>& output, const std::vector<int>& predicate_keys)
+bool check_scan_result(std::vector<uint16_t> const& input, std::vector<uint8_t> const& output, std::vector<int> const& predicate_keys)
 {
     const size_t strive = predicate_keys.size();
-    for (size_t i=0;i<predicate_keys.size();++i)
+    for (size_t i = 0; i < predicate_keys.size(); ++i)
     {
         std::vector<uint8_t> dist_output;
-        for (size_t j=i;j<output.size();j+=strive)
+        for (size_t j = i; j < output.size(); j += strive)
         {
             dist_output.push_back(output[j]);
         }
@@ -202,7 +201,6 @@ void do_shared_scan_benchmark(
     std::function<void(std::vector<int> const&, __m128i*, size_t, std::vector<std::vector<uint8_t>>&)> shared_scan_function,
     int predicate_key_count)
 {
-//    std::cout << "Executing " << name << " with " << predicate_key_count << " keys." << std::flush;
     std::vector<int> predicate_keys(predicate_key_count);
     for (size_t i = 0; i < predicate_key_count; i++) 
     {
@@ -216,7 +214,6 @@ void do_shared_scan_benchmark(
 
     for (int i = 0; i < benchmark_repetitions; ++i)
     {
-//        std::cout << ' ' << (i+1) << ".." << std::flush;
         _clock();
         shared_scan_function(predicate_keys, compressed_data, input_size, output_buffers);
         elapsed_time_us[i] = _clock().count();
@@ -224,17 +221,13 @@ void do_shared_scan_benchmark(
 
     print_numbers(name, elapsed_time_us);
 
-/*    for (size_t i = 0; i < predicate_key_count; i++)
+    for (size_t i = 0; i < predicate_key_count; i++)
     {
-        if (!check_scan_result(input, input_size, output_buffers[i], predicate_keys[i]))
-        {
-            std::cout << "(Error) Incorrect results" << std::endl;
-            break;
-        }
-    }                                                                                      */
+        //check_scan_result(input, input_size, output_buffers[i], predicate_keys[i]));
+    }
 }
 
-void do_shared_scan_benchmark2(
+void do_shared_scan_linear_benchmark(
     std::string name,
     size_t benchmark_repetitions,
     std::vector<uint16_t> input,
@@ -243,7 +236,6 @@ void do_shared_scan_benchmark2(
     std::function<void(const std::vector<int>&, __m128i*, size_t, std::vector<uint8_t>&)> shared_scan_function,
     int predicate_key_count)
 {
-//    std::cout << "Executing " << name << " with " << predicate_key_count << " keys." << std::flush;
     std::vector<int> predicate_keys(predicate_key_count);
     for (size_t i = 0; i < predicate_key_count; i++)
     {
@@ -252,20 +244,19 @@ void do_shared_scan_benchmark2(
 
     std::vector<size_t> elapsed_time_us(benchmark_repetitions);
 
-    size_t output_buffer_size = next_multiple(input_size / 8 + 1, 8);
+    size_t output_buffer_size = scan_output_buffer_size(input_size);
     std::vector<uint8_t> output_buffer(predicate_key_count*output_buffer_size);
 
     for (int i = 0; i < benchmark_repetitions; ++i)
     {
-//        std::cout << ' ' << (i+1) << ".." << std::flush;
         _clock();
         shared_scan_function(predicate_keys, compressed_data, input_size, output_buffer);
         elapsed_time_us[i] = _clock().count();
     }
 
     print_numbers(name, elapsed_time_us);
-/*    if (!check_scan_result(input, output_buffer, predicate_keys))
-        std::cerr << "(Error) Incorrect results" << std::endl;     */
+
+    //check_scan_result(input, output_buffer, predicate_keys);
 }
 
 void bench_shared_scan(size_t data_size, size_t repetitions, int predicate_key_count, bool relative_data_size)
@@ -296,12 +287,13 @@ void bench_shared_scan(size_t data_size, size_t repetitions, int predicate_key_c
     do_shared_scan_benchmark("sse 128, sequential (unrolled)", repetitions, input, input_size, compressed_ptr, shared_scan_128_sequential_unrolled, predicate_key_count);
     
     int num_threads = omp_get_max_threads();
-     do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", repetitions, input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
-
-    do_shared_scan_benchmark2("sse 128, standard", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", repetitions, input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, standard", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
     do_shared_scan_benchmark("sse 128, standard (unrolled)", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard_unrolled, predicate_key_count);
-    do_shared_scan_benchmark2("sse 128, simple", repetitions, input, input_size, compressed_ptr, shared_scan_128_simple, predicate_key_count);
     do_shared_scan_benchmark("sse 128, parallel", repetitions, input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
+
+    do_shared_scan_linear_benchmark("sse 128, linear, standard", repetitions, input, input_size, compressed_ptr, shared_scan_128_linear_standard, predicate_key_count);
+    do_shared_scan_linear_benchmark("sse 128, linear, simple", repetitions, input, input_size, compressed_ptr, shared_scan_128_linear_simple, predicate_key_count);
 
 #ifdef __AVX__
     // do_shared_scan_benchmark("avx 256, sequential", repetitions, input, input_size, compressed_ptr, shared_scan_256_sequential, predicate_key_count);

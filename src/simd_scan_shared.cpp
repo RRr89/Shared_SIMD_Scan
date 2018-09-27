@@ -8,7 +8,6 @@
 
 void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
-//    std::cout << "shared_scan_128_standard: Running with " << predicate_keys.size() << " predicate keys" << std::endl;
     for (size_t i = 0; i < predicate_keys.size(); i++)
     {
         scan_128(predicate_keys[i], input, input_size, outputs[i]);
@@ -32,7 +31,7 @@ void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* i
     }
 }
 
-void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& outputs)
+void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs)
 {
     size_t predicate_key_count = predicate_keys.size();
     size_t compression = BITS_NEEDED;
@@ -86,7 +85,7 @@ void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* i
 
                 uint8_t matches = _mm_movemask_ps(_mm_castsi128_ps(e));
 
-                outputs[(output_index*predicate_key_count)+key_id] = output_bytes[key_id] | (matches << 4);
+                outputs[key_id][output_index] = output_bytes[key_id] | (matches << 4);
             }
 
             // load next
@@ -95,27 +94,6 @@ void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* i
         }
 
         output_index += 1;
-    }
-}
-
-// based on decompress_128_unrolled
-void shared_scan_128_simple(const std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& output)
-{
-    switch (predicate_keys.size())
-    {
-        case 1: shared_scan_128<1>(predicate_keys, input, input_size, output); break;
-        case 2: shared_scan_128<2>(predicate_keys, input, input_size, output); break;
-        case 4: shared_scan_128<4>(predicate_keys, input, input_size, output); break;
-        case 8: shared_scan_128<8>(predicate_keys, input, input_size, output); break;
-        case 16: shared_scan_128<16>(predicate_keys, input, input_size, output); break;
-        case 32: shared_scan_128<32>(predicate_keys, input, input_size, output); break;
-        case 64: shared_scan_128<64>(predicate_keys, input, input_size, output); break;
-        case 128: shared_scan_128<128>(predicate_keys, input, input_size, output); break;
-        case 256: shared_scan_128<256>(predicate_keys, input, input_size, output); break;
-        case 512: shared_scan_128<512>(predicate_keys, input, input_size, output); break;
-        case 1024: shared_scan_128<1024>(predicate_keys, input, input_size, output); break;
-        default:
-            std::cerr << "shareD_scan_128 not supported for " << predicate_keys.size() << " predicate keys!" << std::endl;
     }
 }
 
@@ -195,7 +173,6 @@ void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* i
     __m128i mask = _mm_set1_epi32((1 << compression) - 1);
 
     // process in groups of (maximum) 4 predicates
-#pragma omp parallel for
     for (size_t key_id = 0; key_id < predicate_key_count; key_id += 4)
     {
         __m128i current = _mm_setzero_si128();

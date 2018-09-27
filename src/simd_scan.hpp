@@ -102,10 +102,9 @@ int scan_256_unrolled(int predicate_key, __m128i* input, size_t input_size, std:
 void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_sequential_unrolled(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
-void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& outputs);
+void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_standard_unrolled(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
-void shared_scan_128_simple(const std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
 
 #ifdef __AVX__
 void shared_scan_256_sequential(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
@@ -113,10 +112,15 @@ void shared_scan_256_standard(std::vector<int> const& predicate_keys, __m128i* i
 void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 #endif
 
+/*
+* Shared SIMD scan with one linear output vector
+*/
 
-// based on decompress_128_unrolled
+void shared_scan_128_linear_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& outputs);
+void shared_scan_128_linear_simple(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
+
 template <size_t NUM>
-void shared_scan_128(const std::vector<int>& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& output)
+void shared_scan_128_linear_static(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& output)
 {
     uint8_t* output_d = output.data();
 
@@ -125,7 +129,6 @@ void shared_scan_128(const std::vector<int>& predicate_keys, __m128i* input, siz
     __m128i source = _mm_loadu_si128(input);
 
     size_t output_index = 0; // current write index of the output array (equals # of decompressed values)
-    size_t total_processed_bytes = 0; // holds # of input bytes that have been processed completely
 
     // shuffle masks
     size_t input_offset[8];
@@ -186,7 +189,8 @@ void shared_scan_128(const std::vector<int>& predicate_keys, __m128i* input, siz
             predicate_key << padding[6],
             predicate_key << padding[7]);
     }
-    size_t oidx=0;
+    
+    size_t oidx = 0;
 
     while (output_index < input_size)
     {
@@ -196,8 +200,8 @@ void shared_scan_128(const std::vector<int>& predicate_keys, __m128i* input, siz
             const size_t mask_index = 0;
             __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
             __m128i c = _mm_and_si128(b, clean_mask[mask_index]);
-//#pragma omp parallel for
-            for (int i=0; i<NUM; ++i)
+
+            for (int i = 0; i < NUM; ++i)
             {
                 __m128i e = _mm_cmpeq_epi32(c, predicates[i*2]);
                 out[i] = _mm_movemask_ps(_mm_castsi128_ps(e));
@@ -205,7 +209,7 @@ void shared_scan_128(const std::vector<int>& predicate_keys, __m128i* input, siz
 
             // load next
             output_index += 4;
-            total_processed_bytes = output_index * compression / 8;
+            size_t total_processed_bytes = output_index * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
         }
 
@@ -213,8 +217,8 @@ void shared_scan_128(const std::vector<int>& predicate_keys, __m128i* input, siz
             const size_t mask_index = 1;
             __m128i b = _mm_shuffle_epi8(source, shuffle_mask[mask_index]);
             __m128i c = _mm_and_si128(b, clean_mask[mask_index]);
-//#pragma omp parallel for
-            for (int i=0; i<NUM; ++i)
+
+            for (int i = 0; i < NUM; ++i)
             {
                 __m128i e = _mm_cmpeq_epi32(c, predicates[i*2+1]);
                 out[i] |= (_mm_movemask_ps(_mm_castsi128_ps(e)) << 4);
@@ -222,12 +226,12 @@ void shared_scan_128(const std::vector<int>& predicate_keys, __m128i* input, siz
 
             // load next
             output_index += 4;
-            total_processed_bytes = output_index * compression / 8;
+            size_t total_processed_bytes = output_index * compression / 8;
             source = _mm_loadu_si128((__m128i*)&((uint8_t*)input)[total_processed_bytes]);
         }
 
-        memcpy(output_d+oidx, out, NUM*sizeof(uint8_t));
-        oidx += NUM*sizeof(uint8_t);
+        memcpy(output_d + oidx, out, NUM * sizeof(uint8_t));
+        oidx += NUM * sizeof(uint8_t);
     }
 }
 

@@ -115,14 +115,14 @@ TEST_CASE("Simple Shared SIMD Scan", "[simple-shared-scan]")
     std::vector<int> predicate_keys1{ 1 };
     std::vector<int> predicate_keys2{ 2, 3 };
 
-    size_t output_buffer_size = next_multiple(input_numbers.size(), 8) / 8;
-    std::vector<uint8_t> outputs1(predicate_keys1.size()*output_buffer_size);
-    std::vector<uint8_t> outputs2(predicate_keys2.size()*output_buffer_size);
+    size_t output_buffer_size = scan_output_buffer_size(input_numbers.size());
+    std::vector<uint8_t> outputs1(predicate_keys1.size() * output_buffer_size);
+    std::vector<uint8_t> outputs2(predicate_keys2.size() * output_buffer_size);
     std::vector<uint8_t> compare_output(output_buffer_size);
 
     SECTION("One key")
     {
-        shared_scan_128_simple(predicate_keys1, compressed_ptr, input_numbers.size(), outputs1);
+        shared_scan_128_linear_simple(predicate_keys1, compressed_ptr, input_numbers.size(), outputs1);
         int hits = scan_128(predicate_keys1[0], compressed_ptr, input_numbers.size(), compare_output);
 
         REQUIRE(hits == 4);
@@ -131,18 +131,18 @@ TEST_CASE("Simple Shared SIMD Scan", "[simple-shared-scan]")
 
     SECTION("Two keys")
     {
-        shared_scan_128_simple(predicate_keys2, compressed_ptr, input_numbers.size(), outputs2);
+        shared_scan_128_linear_simple(predicate_keys2, compressed_ptr, input_numbers.size(), outputs2);
 
         int hits = scan_128(predicate_keys2[0], compressed_ptr, input_numbers.size(), compare_output);
         REQUIRE(hits == 4);
-        for (size_t i=0; i<compare_output.size(); ++i)
+        for (size_t i = 0; i < compare_output.size(); ++i)
         {
             REQUIRE(outputs2[i*2] == compare_output[i]);
         }
 
         hits = scan_128(predicate_keys2[1], compressed_ptr, input_numbers.size(), compare_output);
         REQUIRE(hits == 4);
-        for (size_t i=0; i< compare_output.size(); ++i)
+        for (size_t i = 0; i < compare_output.size(); ++i)
         {
             REQUIRE(outputs2[i*2+1] == compare_output[i]);
         }
