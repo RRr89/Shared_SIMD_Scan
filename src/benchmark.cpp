@@ -16,14 +16,15 @@ void print_numbers(std::string benchmark_name, std::vector<size_t> const& elapse
     size_t benchmark_repetitions = elapsed_time_us.size();
     std::cout << "* " << benchmark_name << ": ";
 
-    size_t min = elapsed_time_us[0];
-    for (int i = 1; i < benchmark_repetitions; i++)
+    size_t sum = 0;
+    for (int i = 0; i < benchmark_repetitions; i++)
     {
-        const size_t& v = elapsed_time_us[i];
-        min =  v<min?v:min;
+        sum += elapsed_time_us[i];
     }
 
-    std::cout << (min / 1000000) << " ms; [";
+    size_t avg = sum / benchmark_repetitions;
+
+    std::cout << (avg / 1000000) << " ms; [";
 
     for (int i = 0; i < benchmark_repetitions; i++)
     {
