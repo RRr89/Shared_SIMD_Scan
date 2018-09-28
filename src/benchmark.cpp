@@ -290,10 +290,12 @@ void bench_shared_scan(size_t data_size, size_t repetitions, int predicate_key_c
     int num_threads = omp_get_max_threads();
     do_shared_scan_benchmark("sse 128, threaded (" + std::to_string(num_threads) + " threads)", repetitions, input, input_size, compressed_ptr, shared_scan_128_threaded, predicate_key_count);
     do_shared_scan_benchmark("sse 128, standard", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard, predicate_key_count);
+    do_shared_scan_benchmark("sse 128, standard v2", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard_v2, predicate_key_count);
     do_shared_scan_benchmark("sse 128, standard (unrolled)", repetitions, input, input_size, compressed_ptr, shared_scan_128_standard_unrolled, predicate_key_count);
     do_shared_scan_benchmark("sse 128, parallel", repetitions, input, input_size, compressed_ptr, shared_scan_128_parallel, predicate_key_count);
 
     do_shared_scan_linear_benchmark("sse 128, linear, standard", repetitions, input, input_size, compressed_ptr, shared_scan_128_linear_standard, predicate_key_count);
+    do_shared_scan_linear_benchmark("sse 128, linear, standard v2", repetitions, input, input_size, compressed_ptr, shared_scan_128_linear_standard_v2, predicate_key_count);
     do_shared_scan_linear_benchmark("sse 128, linear, simple", repetitions, input, input_size, compressed_ptr, shared_scan_128_linear_simple, predicate_key_count);
 
 #ifdef __AVX__
