@@ -103,7 +103,6 @@ void shared_scan_128_sequential(std::vector<int> const& predicate_keys, __m128i*
 void shared_scan_128_sequential_unrolled(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_threaded(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
-void shared_scan_128_standard_v2(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_standard_unrolled(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 void shared_scan_128_parallel(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<std::vector<uint8_t>>& outputs);
 
@@ -118,7 +117,6 @@ void shared_scan_256_parallel(std::vector<int> const& predicate_keys, __m128i* i
 */
 
 void shared_scan_128_linear_standard(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& outputs);
-void shared_scan_128_linear_standard_v2(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& outputs);
 void shared_scan_128_linear_simple(std::vector<int> const& predicate_keys, __m128i* input, size_t input_size, std::vector<uint8_t>& output);
 
 template <size_t NUM>
