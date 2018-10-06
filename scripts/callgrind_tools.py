@@ -1,5 +1,3 @@
-from operator import add
-
 # (roughly) parses a callgrind file and returns the cost for a given function
 def get_inclusive_cost(file_name, function_name):
     alias = ''
@@ -22,7 +20,6 @@ def get_inclusive_cost(file_name, function_name):
             # grab function alias
             if function_name in line and '=(' in line:
                 alias = line[line.index('(') : line.index(')')+1]
-                continue
 
             # start collecting
             if line.startswith('fn=') and (function_name in line or (len(alias) > 0 and alias in line)):
